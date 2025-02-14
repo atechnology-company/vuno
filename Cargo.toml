@@ -1,0 +1,8 @@
+[package]
+name = "vuno"
+version = "0.0.1"
+edition = "2021"
+description = "vuno is a terminal-style text editor, with people in mind."
+author = "Max Lee Abdurrahman As-Salafi Carter <undivisible@vk.com>"
+
+[dependencies]
