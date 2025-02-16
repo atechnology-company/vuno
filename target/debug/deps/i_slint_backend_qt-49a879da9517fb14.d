@@ -1,8 +1,0 @@
-C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\libi_slint_backend_qt-49a879da9517fb14.rmeta: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\i-slint-backend-qt-1.9.2\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\i-slint-backend-qt-1.9.2\accessible_generated.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\i-slint-backend-qt-1.9.2\key_generated.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\i-slint-backend-qt-1.9.2\README.md
-
-C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\i_slint_backend_qt-49a879da9517fb14.d: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\i-slint-backend-qt-1.9.2\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\i-slint-backend-qt-1.9.2\accessible_generated.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\i-slint-backend-qt-1.9.2\key_generated.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\i-slint-backend-qt-1.9.2\README.md
-
-C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\i-slint-backend-qt-1.9.2\lib.rs:
-C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\i-slint-backend-qt-1.9.2\accessible_generated.rs:
-C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\i-slint-backend-qt-1.9.2\key_generated.rs:
-C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\i-slint-backend-qt-1.9.2\README.md:

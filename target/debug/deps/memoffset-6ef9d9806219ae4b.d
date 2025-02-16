@@ -1,8 +1,0 @@
-C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\libmemoffset-6ef9d9806219ae4b.rmeta: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\memoffset-0.9.1\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\memoffset-0.9.1\src\raw_field.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\memoffset-0.9.1\src\offset_of.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\memoffset-0.9.1\src\span_of.rs
-
-C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\memoffset-6ef9d9806219ae4b.d: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\memoffset-0.9.1\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\memoffset-0.9.1\src\raw_field.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\memoffset-0.9.1\src\offset_of.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\memoffset-0.9.1\src\span_of.rs
-
-C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\memoffset-0.9.1\src\lib.rs:
-C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\memoffset-0.9.1\src\raw_field.rs:
-C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\memoffset-0.9.1\src\offset_of.rs:
-C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\memoffset-0.9.1\src\span_of.rs:
