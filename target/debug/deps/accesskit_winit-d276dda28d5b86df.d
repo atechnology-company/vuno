@@ -1,0 +1,9 @@
+C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\libaccesskit_winit-d276dda28d5b86df.rmeta: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\accesskit_winit-0.23.1\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\accesskit_winit-0.23.1\src\platform_impl\mod.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\accesskit_winit-0.23.1\src\platform_impl\windows.rs
+
+C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\libaccesskit_winit-d276dda28d5b86df.rlib: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\accesskit_winit-0.23.1\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\accesskit_winit-0.23.1\src\platform_impl\mod.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\accesskit_winit-0.23.1\src\platform_impl\windows.rs
+
+C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\accesskit_winit-d276dda28d5b86df.d: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\accesskit_winit-0.23.1\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\accesskit_winit-0.23.1\src\platform_impl\mod.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\accesskit_winit-0.23.1\src\platform_impl\windows.rs
+
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\accesskit_winit-0.23.1\src\lib.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\accesskit_winit-0.23.1\src\platform_impl\mod.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\accesskit_winit-0.23.1\src\platform_impl\windows.rs:
