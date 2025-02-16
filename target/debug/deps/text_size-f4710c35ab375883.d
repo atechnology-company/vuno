@@ -1,0 +1,10 @@
+C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\libtext_size-f4710c35ab375883.rmeta: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\range.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\size.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\traits.rs
+
+C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\libtext_size-f4710c35ab375883.rlib: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\range.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\size.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\traits.rs
+
+C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\text_size-f4710c35ab375883.d: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\range.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\size.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\traits.rs
+
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\lib.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\range.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\size.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\text-size-1.1.1\src\traits.rs:

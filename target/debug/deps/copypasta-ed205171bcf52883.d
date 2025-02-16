@@ -1,0 +1,8 @@
+C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\libcopypasta-ed205171bcf52883.rmeta: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\copypasta-0.10.1\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\copypasta-0.10.1\src\common.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\copypasta-0.10.1\src\windows_clipboard.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\copypasta-0.10.1\src\nop_clipboard.rs
+
+C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\copypasta-ed205171bcf52883.d: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\copypasta-0.10.1\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\copypasta-0.10.1\src\common.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\copypasta-0.10.1\src\windows_clipboard.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\copypasta-0.10.1\src\nop_clipboard.rs
+
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\copypasta-0.10.1\src\lib.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\copypasta-0.10.1\src\common.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\copypasta-0.10.1\src\windows_clipboard.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\copypasta-0.10.1\src\nop_clipboard.rs:

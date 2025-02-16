@@ -1,0 +1,10 @@
+C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\libidna-bec0f7a16b864700.rmeta: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\deprecated.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\punycode.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\uts46.rs
+
+C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\libidna-bec0f7a16b864700.rlib: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\deprecated.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\punycode.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\uts46.rs
+
+C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\idna-bec0f7a16b864700.d: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\deprecated.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\punycode.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\uts46.rs
+
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\lib.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\deprecated.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\punycode.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\idna-1.0.3\src\uts46.rs:

@@ -1,0 +1,8 @@
+C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\libderive_more-ce69b888355771ad.rmeta: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\derive_more-1.0.0\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\derive_more-1.0.0\src\add.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\derive_more-1.0.0\src\ops.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\derive_more-1.0.0\src\../README.md
+
+C:\Users\max lee abdurrahman\Documents\GitHub\platesos\vuno\target\debug\deps\derive_more-ce69b888355771ad.d: C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\derive_more-1.0.0\src\lib.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\derive_more-1.0.0\src\add.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\derive_more-1.0.0\src\ops.rs C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\derive_more-1.0.0\src\../README.md
+
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\derive_more-1.0.0\src\lib.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\derive_more-1.0.0\src\add.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\derive_more-1.0.0\src\ops.rs:
+C:\Users\max\ lee\ abdurrahman\.cargo\registry\src\index.crates.io-6f17d22bba15001f\derive_more-1.0.0\src\../README.md:
