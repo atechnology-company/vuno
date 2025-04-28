@@ -1,20 +1,10 @@
-[package]
-name = "vuno"
-version = "0.0.2-experimental"
-edition = "2021"
-description = "vuno is a terminal-style text editor, with people in mind."
-authors = ["Max Lee Abdurrahman As-Salafi Carter <undivisible@vk.com>"]
-
-[dependencies]
-slint = "1.9.2"
+[workspace]
+members = ["src-tauri"]
+resolver = "2"
 
 [profile.release]
-opt-level = 3
-lto = "fat"
-codegen-units = 1
 panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = 3
 strip = true
-
-[[bin]]
-name = "vuno"
-path = "src/main.rs"

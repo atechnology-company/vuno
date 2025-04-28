@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json.schemastore.org/tauri-conf",
+  "build": {
+    "distDir": "../build",
+    "devPath": "http://localhost:5175"
+  },
+  "package": {
+    "productName": "vuno",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "dialog": {
+        "all": true,
+        "ask": true,
+        "confirm": true,
+        "message": true,
+        "open": true,
+        "save": true
+      },
+      "fs": {
+        "all": true,
+        "readFile": true,
+        "writeFile": true,
+        "readDir": true,
+        "copyFile": true,
+        "createDir": true,
+        "removeDir": true,
+        "removeFile": true,
+        "renameFile": true,
+        "exists": true,
+        "scope": {
+          "allow": ["**"],
+          "deny": []
+        }
+      },
+      "shell": {
+        "all": false,
+        "execute": false,
+        "open": true,
+        "sidecar": false
+      },
+      "path": {
+        "all": true
+      },
+      "notification": {
+        "all": true
+      },
+      "window": {
+        "all": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "category": "DeveloperTool",
+      "copyright": "Max Lee Abdurrahman As-Salafi Carter",
+      "deb": {
+        "depends": []
+      },
+      "externalBin": [],
+      "icon": [
+        "icons/icon.ico"
+      ],
+      "identifier": "company.atechnology.vuno",
+      "longDescription": "The simple, unitary text editor for the modern age, designed by humans for humans.",
+      "macOS": {
+        "entitlements": null,
+        "exceptionDomain": "",
+        "frameworks": [],
+        "providerShortName": null,
+        "signingIdentity": null
+      },
+      "resources": [],
+      "shortDescription": "Modern text editor",
+      "targets": "all",
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": "",
+        "webviewInstallMode": {
+          "type": "downloadBootstrapper"
+        },
+        "wix": {
+          "language": "en-US",
+          "template": "WixUI_Minimal",
+          "componentRefs": ["VunoFileTypes"],
+          "enableElevatedUpdateTask": true,
+          "bannerPath": null,
+          "dialogImagePath": null,
+          "license": null
+        }
+      }
+    },
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
+    },
+    "updater": {
+      "active": false
+    },
+    "windows": [
+      {
+        "title": "vuno",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "center": true,
+        "resizable": true,
+        "decorations": false
+      }
+    ],
+    "cli": {
+      "description": "A modern text editor",
+      "args": [
+        {
+          "name": "file",
+          "index": 1,
+          "takesValue": true,
+          "multiple": false,
+          "description": "File to open"
+        }
+      ]
+    }
+  }
+}

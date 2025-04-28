@@ -1,0 +1,34 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["**/.env.*local"],
+  "globalEnv": ["NODE_ENV"],
+  "tasks": {
+    "dev:vite": {
+      "persistent": true,
+      "cache": false
+    },
+    "build": {
+      "outputs": ["dist/**", "build/**", ".svelte-kit/**"],
+      "cache": true
+    },
+    "preview": {
+      "dependsOn": ["build"]
+    },
+    "lint": {
+      "outputs": []
+    },
+    "tauri:dev": {
+      "dependsOn": ["dev:vite"],
+      "persistent": true,
+      "cache": false
+    },
+    "tauri:build": {
+      "dependsOn": ["build"],
+      "outputs": ["src-tauri/target/**"]
+    },
+    "clean": {
+      "cache": false
+    }
+  },
+  "extends": ["//"]
+} 

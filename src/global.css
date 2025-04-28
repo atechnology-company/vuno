@@ -1,0 +1,419 @@
+/* Global CSS styles for Vuno Editor */
+
+/* Base reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body, h1, h2, h3, h4, h5, h6, p, ul, ol, li, figure, figcaption, blockquote, dl, dd {
+  margin: 0;
+  padding: 0;
+}
+
+/* Import fonts */
+@font-face {
+  font-family: 'Onest';
+  src: url('../fonts/Onest-VariableFont_wght.ttf') format('truetype');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../fonts/JetBrainsMono-VariableFont_wght.ttf') format('truetype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../fonts/JetBrainsMono-Italic-VariableFont_wght.ttf') format('truetype');
+  font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Base styles */
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background-color: #1e1e1e;
+  color: #e1e4e8;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* App container */
+#app {
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.7);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.5) transparent;
+}
+
+/* Code blocks */
+code, pre {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Syntax highlighting for code blocks */
+.syntax-keyword { color: #569CD6; font-weight: bold; }
+.syntax-function { color: #DCDCAA; }
+.syntax-string { color: #CE9178; }
+.syntax-comment { color: #6A9955; }
+.syntax-number { color: #B5CEA8; }
+.syntax-variable { color: #9CDCFE; }
+
+/* Fix AI response code blocks */
+.ai-response pre {
+  background-color: #1e1e1e;
+  border-radius: 6px;
+  padding: 16px;
+  overflow: auto;
+  margin: 1em 0;
+  border: 1px solid #333;
+}
+
+.ai-response pre code {
+  font-family: 'JetBrains Mono', monospace;
+  background-color: transparent;
+  padding: 0;
+  border: none;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #e1e4e8;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  tab-size: 4;
+}
+
+/* Focus styles for accessibility */
+:focus {
+  outline: 2px solid #646cff;
+  outline-offset: 2px;
+}
+
+/* Enhanced focus styles for improved keyboard navigation */
+:focus-visible {
+  outline: 3px solid #646cff;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px rgba(100, 108, 255, 0.4);
+}
+
+/* Ensure input elements have clear focus states for keyboard use */
+input:focus, 
+button:focus, 
+.command-input:focus,
+[role="button"]:focus,
+[tabindex]:focus {
+  outline: 3px solid #646cff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.5);
+}
+
+/* Make keyboard-only focus visible */
+.keyboard-user *:focus {
+  outline: 3px solid #646cff !important;
+  outline-offset: 3px !important;
+}
+
+/* Button and form element resets */
+button, input, select, textarea {
+  font: inherit;
+}
+
+/* Utility classes */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Animation utilities */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Loading spinner */
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: #646cff;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive media queries */
+@media (max-width: 768px) {
+  html {
+    font-size: 12px;
+  }
+  
+  .toolbar {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .editor-area.split {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+}
+
+/* Add or update the styles for code blocks */
+/* Code blocks */
+pre {
+  background-color: #1e1e2e;
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  border: 1px solid #292a3a;
+}
+
+pre code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  white-space: pre-wrap;
+  color: #e1e4e8;
+}
+
+/* CodeMirror specific styles for code blocks */
+.cm-content {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+/* Fix line breaks in CodeMirror */
+.cm-line {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  padding-right: 8px !important;
+}
+
+/* Basic tokens - material theme colors */
+.cm-keyword { color: #9e78ff; }
+.cm-operator { color: #78c4ff; }
+.cm-variable-2 { color: #e1e4e8; }
+.cm-variable-3, .cm-type { color: #78c4ff; }
+.cm-builtin { color: #ffbc7a; }
+.cm-atom { color: #ffbc7a; }
+.cm-number { color: #ffbc7a; }
+.cm-def { color: #62aeef; }
+.cm-string { color: #7dd3a4; }
+.cm-string-2 { color: #7dd3a4; }
+.cm-comment { color: #637286; }
+.cm-variable { color: #e1e4e8; }
+.cm-tag { color: #62aeef; }
+.cm-meta { color: #78c4ff; }
+.cm-attribute { color: #7dd3a4; }
+.cm-property { color: #62aeef; }
+.cm-qualifier { color: #7dd3a4; }
+.cm-variable-3, .cm-type { color: #ffbc7a; }
+.cm-error {
+  color: #ff7a7a;
+  background-color: rgba(255, 122, 122, 0.1);
+}
+
+/* Styles for the AI code block */
+.ai-code-block {
+  margin: 1rem 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #292a3a;
+  background-color: #1e1e2e;
+}
+
+.ai-code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #1a1a27;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #292a3a;
+}
+
+.code-lang {
+  color: #e1e4e8;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.insert-code-btn {
+  background-color: #6f98e3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.insert-code-btn:hover {
+  background-color: #7fa8f3;
+}
+
+.ai-code-block pre {
+  margin: 0;
+  border-radius: 0;
+  max-width: 100%; 
+  overflow-x: auto;
+}
+
+.ai-code-block pre code {
+  padding: 1rem;
+  display: block;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+/* CodeMirror-specific fixes for AI code blocks */
+.ai-code-block .cm-editor,
+.ai-code-block .cm-scroller {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.ai-code-block .cm-content,
+.ai-code-block .cm-line {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+/* Make the editable content in CodeMirror non-editable in AI responses */
+.ai-code-block .cm-content[contenteditable="true"] {
+  -webkit-user-modify: read-only !important;
+  user-modify: read-only !important;
+  pointer-events: none !important;
+}
+
+/* Force code colors even in dark mode */
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #282c34 !important;
+  }
+  
+  pre code {
+    color: #abb2bf !important; 
+  }
+}
+
+/* Make the CodeMirror wrapper fill the container */
+.cm-editor {
+  height: 100%;
+}
+
+/* Make the editable content in CodeMirror non-editable in AI responses */
+.ai-code-block .cm-content[contenteditable="true"] {
+  -webkit-user-modify: read-only !important;
+  user-modify: read-only !important;
+  pointer-events: none !important;
+}
+
+/* Apply JetBrains Mono to all code elements */
+code, pre, .cm-content, .cm-line, .code-editor, pre code {
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Make sure CodeMirror themes are applied to our code blocks */
+.cm-editor {
+  height: 100%;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Make the editable content in CodeMirror non-editable in AI responses */
+.ai-code-block .cm-content[contenteditable="true"] {
+  -webkit-user-modify: read-only !important;
+  user-modify: read-only !important;
+  pointer-events: none !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Command bar styling */
+.command-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 25vh;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 1000;
+  background: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: all;
+  padding: 0;
+  margin: 0;
+}
+
+.command-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0.5rem 1rem 1rem 1rem;
+  box-sizing: border-box;
+} 

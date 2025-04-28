@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Fragment>
+        <ComponentGroup Id="VunoFileTypes">
+            <!-- Text files -->
+            <Component Id="TextFileAssociation" Guid="*" Directory="INSTALLDIR">
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\.txt" Value="vuno.text" Type="string" KeyPath="yes"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.text" Value="Text Document" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.text\DefaultIcon" Value="[INSTALLDIR]vuno.exe,0" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.text\shell\open\command" Value="&quot;[INSTALLDIR]vuno.exe&quot; &quot;%1&quot;" Type="string"/>
+            </Component>
+
+            <!-- Markdown files -->
+            <Component Id="MarkdownFileAssociation" Guid="*" Directory="INSTALLDIR">
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\.md" Value="vuno.markdown" Type="string" KeyPath="yes"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.markdown" Value="Markdown Document" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.markdown\DefaultIcon" Value="[INSTALLDIR]vuno.exe,0" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.markdown\shell\open\command" Value="&quot;[INSTALLDIR]vuno.exe&quot; &quot;%1&quot;" Type="string"/>
+            </Component>
+
+            <!-- JavaScript files -->
+            <Component Id="JavaScriptFileAssociation" Guid="*" Directory="INSTALLDIR">
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\.js" Value="vuno.javascript" Type="string" KeyPath="yes"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.javascript" Value="JavaScript Source Code" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.javascript\DefaultIcon" Value="[INSTALLDIR]vuno.exe,0" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.javascript\shell\open\command" Value="&quot;[INSTALLDIR]vuno.exe&quot; &quot;%1&quot;" Type="string"/>
+            </Component>
+
+            <!-- TypeScript files -->
+            <Component Id="TypeScriptFileAssociation" Guid="*" Directory="INSTALLDIR">
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\.ts" Value="vuno.typescript" Type="string" KeyPath="yes"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.typescript" Value="TypeScript Source Code" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.typescript\DefaultIcon" Value="[INSTALLDIR]vuno.exe,0" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.typescript\shell\open\command" Value="&quot;[INSTALLDIR]vuno.exe&quot; &quot;%1&quot;" Type="string"/>
+            </Component>
+
+            <!-- Python files -->
+            <Component Id="PythonFileAssociation" Guid="*" Directory="INSTALLDIR">
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\.py" Value="vuno.python" Type="string" KeyPath="yes"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.python" Value="Python Source Code" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.python\DefaultIcon" Value="[INSTALLDIR]vuno.exe,0" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.python\shell\open\command" Value="&quot;[INSTALLDIR]vuno.exe&quot; &quot;%1&quot;" Type="string"/>
+            </Component>
+
+            <!-- Rust files -->
+            <Component Id="RustFileAssociation" Guid="*" Directory="INSTALLDIR">
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\.rs" Value="vuno.rust" Type="string" KeyPath="yes"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.rust" Value="Rust Source Code" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.rust\DefaultIcon" Value="[INSTALLDIR]vuno.exe,0" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.rust\shell\open\command" Value="&quot;[INSTALLDIR]vuno.exe&quot; &quot;%1&quot;" Type="string"/>
+            </Component>
+
+            <!-- JSON files -->
+            <Component Id="JsonFileAssociation" Guid="*" Directory="INSTALLDIR">
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\.json" Value="vuno.json" Type="string" KeyPath="yes"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.json" Value="JSON Document" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.json\DefaultIcon" Value="[INSTALLDIR]vuno.exe,0" Type="string"/>
+                <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\vuno.json\shell\open\command" Value="&quot;[INSTALLDIR]vuno.exe&quot; &quot;%1&quot;" Type="string"/>
+            </Component>
+        </ComponentGroup>
+    </Fragment>
+</Wix> 
