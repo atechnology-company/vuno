@@ -3,25 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:">
     <link rel="icon" href="/favicon.png" type="image/png" />
     <title>vuno</title>
     
-    <!-- Add resource hints for faster loading -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <!-- Add JetBrains Mono font for code with display=swap for better performance -->
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <!-- Using local fonts via @font-face in src/global.css -->
     
     <!-- Critical CSS inline -->
     <style>
       html, body {
         margin: 0;
         padding: 0;
-        background-color: #1e1e1e;
-        color: #eee;
-        font-family: 'JetBrains Mono', monospace;
+  background-color: #000000;
+  color: #ffffff;
+  font-family: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
         height: 100%;
         width: 100%;
         overflow: hidden;
@@ -37,7 +32,7 @@
         width: 100%;
         background-color: #000000;
         color: #cccccc;
-        font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', monospace;
         position: fixed;
         top: 0;
         left: 0;

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>vuno</string>
+	<key>CFBundleDisplayName</key>
+	<string>Vuno</string>
+	<key>CFBundleIdentifier</key>
+	<string>company.atechnology.vuno</string>
+	<key>CFBundleVersion</key>
+	<string>0.1.0</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleExecutable</key>
+	<string>vuno</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>10.13</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Vuno needs to control system events to provide global keyboard shortcuts and enhance your text editing experience.</string>
+	<key>NSSystemAdministrationUsageDescription</key>
+	<string>Vuno needs system administration access to provide enhanced text editing features and global keyboard shortcuts.</string>
+	<key>NSAccessibilityUsageDescription</key>
+	<string>Vuno needs accessibility access to provide global keyboard shortcuts and enhanced text editing features. This allows the app to respond to keyboard shortcuts even when it's not the active window.</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.developer-tools</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>txt</string>
+				<string>md</string>
+				<string>js</string>
+				<string>ts</string>
+				<string>json</string>
+				<string>html</string>
+				<string>css</string>
+				<string>rs</string>
+				<string>py</string>
+				<string>rb</string>
+				<string>go</string>
+				<string>java</string>
+				<string>cpp</string>
+				<string>c</string>
+				<string>h</string>
+			</array>
+			<key>CFBundleTypeName</key>
+			<string>Text Document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+		</dict>
+	</array>
+</dict>
+</plist>

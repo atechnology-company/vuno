@@ -2,7 +2,8 @@
 
 *v - vimified<br>
 u - nu<br>
-no - nano*
+no - nano*<br>
+it's like neovim, but easy
 
 vuno is a terminal-style text editor, with people in mind.<br>
 
@@ -16,3 +17,18 @@ fonts used are:
 - jetbrains mono
 
 you can sign up for a gemini api key [here](https://aistudio.google.com/) (limited free part though)
+
+# usage guide
+new file
+"new (file type | markdown)
+
+open a file
+"open (path to file)"
+
+save file
+"save (as whatever)"
+
+quit
+"quit" | "close"
+
+run a command - simply type the command it will automatically recognise it

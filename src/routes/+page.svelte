@@ -1,5 +1,5 @@
 ﻿<script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, SvelteComponent } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import { elasticOut } from 'svelte/easing';
   import { marked } from 'marked';
@@ -8,19 +8,20 @@
   import MarkdownRenderer from '../modules/MarkdownRenderer.svelte';
   import CommandBar from '../modules/CommandBar.svelte';
   import Toast from '../modules/Toast.svelte';
+  import BottomOutput from '../modules/BottomOutput.svelte';
+  import { addOutput, showPanel } from '../modules/outputPanelStore';
   import HelpWindow from '../modules/HelpWindow.svelte';
   import TutorialWindow from '../modules/TutorialWindow.svelte';
   import { addToast } from '../modules/toastStore';
-  import { KeyboardManager } from '../modules/KeyboardManager';
   import { appState } from '../stores/appState';
   import { eventBus } from '../stores/eventBus';
   
   // Import Tauri API
   import { invoke } from '@tauri-apps/api/tauri';
-  import { open, save } from '@tauri-apps/api/dialog';
-  import { readTextFile, writeTextFile } from '@tauri-apps/api/fs';
+  import { readTextFile, renameFile } from '@tauri-apps/api/fs';
+  import { basename, dirname, join } from '@tauri-apps/api/path';
 
-  // Import TauriKeyHandler instead of KeyboardManager
+  // Use Tauri-only key handler
   import { TauriKeyHandler } from '../lib/tauriKeyHandler';
 
   // Initialize variables and state
@@ -36,19 +37,68 @@
   let filteredCommands: string[] = [];
   let editorComponent: any;
   let allGeneratedSuggestions: string[] = [];
+  let isFirstRun = false;
+  let showTutorial = false;
+  let currentFile: string = '';
+  let bufferId: number | null = null;
+  let welcomeDisplayed = false;
+  let content: string = '';
+  let renaming: boolean = false;
+  let renameValue: string = '';
+  let renameInput: HTMLInputElement | null = null;
+
+  function openGlobalCommandBar() {
+    // Ensure suggestions are available and input is clean each time it opens
+    if (!allGeneratedSuggestions || allGeneratedSuggestions.length === 0) {
+      generateSuggestions();
+    }
+    appState.update(s => ({
+      ...s,
+      commandMode: true,
+      commandText: '',
+      commandBarPlaceholder: 'Type a command or press Enter',
+      showSuggestions: true,
+      suggestions: allGeneratedSuggestions
+    }));
+    // Focus the input shortly after
+    setTimeout(() => {
+      try { focusCommandInput(); } catch {}
+    }, 0);
+  }
 
   onMount(async () => {
+    // Check if we're in browser environment
+    if (typeof window === 'undefined') return;
+    
     // Set app element reference for easier manipulation
     appElement = document.getElementById('app');
     svelteContainer = document.getElementById('svelte');
 
     try {
-      // Initialize TauriKeyHandler
+  // Initialize TauriKeyHandler (no DOM fallback)
       await keyHandler.initialize();
-      console.log('TauriKeyHandler initialized successfully');
+  console.log('TauriKeyHandler initialized successfully');
+
+    // Add command event listener
+      if (typeof document !== 'undefined') {
+        document.body.addEventListener('command', (event: any) => {
+          const { command } = event.detail;
+      console.log('Received command:', command);
+          executeCommand(command);
+        });
+        document.body.addEventListener('command-input-focus-requested', () => {
+          focusCommandInput();
+        });
+        // Listen for inline insert-command events from InlineCommandBar
+        window.addEventListener('insert-command', (e: any) => {
+          const cmd = e.detail?.command;
+          if (!cmd) return;
+          handleInsertCommand(cmd);
+        });
+      }
 
       // Setup CLI file opening
-      await setupCliFileOpening();
+  await setupCliFileOpening();
 
       // Check for API key
       await checkApiKey();
@@ -63,15 +113,114 @@
       if (isFirstRun && !welcomeDisplayed) {
         appState.update(s => ({ ...s, showTutorial: true }));
       }
+
+      // Add global mouse event listeners for window dragging
+      if (typeof document !== 'undefined') {
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        
+  // Rely on backend key_action events
+      }
     } catch (error) {
       console.error('Error during app initialization:', error);
       addToast('Error initializing app', 'error');
     }
   });
 
+  function handleInsertCommand(cmd: string) {
+    // If the currently mounted editor exposes insertAtCursor, call it
+    try {
+      if (editorComponent && typeof editorComponent.insertAtCursor === 'function') {
+        editorComponent.insertAtCursor(cmd);
+        return;
+      }
+      // Fallback: if editor is a plain textarea inside MarkdownRenderer, find it and insert
+      const activeTextarea = document.querySelector('textarea');
+      if (activeTextarea instanceof HTMLTextAreaElement) {
+        const ta = activeTextarea as HTMLTextAreaElement;
+        const s = ta.selectionStart || 0;
+        const e = ta.selectionEnd || 0;
+        ta.value = ta.value.slice(0, s) + cmd + ta.value.slice(e);
+        ta.focus();
+        ta.selectionStart = ta.selectionEnd = s + cmd.length;
+        // Also update appState content so the UI stays in sync
+        appState.update(s => ({ ...s, content: ta.value, hasUnsavedChanges: true }));
+      }
+    } catch (err) {
+      console.warn('Failed to insert command into editor:', err);
+    }
+  }
+
+  // Inline rename helpers
+  async function startRename() {
+    try {
+      renaming = true;
+      if (currentFile && isTauri) {
+        renameValue = await basename(currentFile);
+      } else {
+        renameValue = currentFile || 'untitled.md';
+      }
+  // Focus the input after it mounts
+  setTimeout(() => { try { renameInput?.focus(); renameInput?.select(); } catch {} }, 0);
+    } catch (e) {
+      renameValue = currentFile || 'untitled.md';
+    }
+  }
+
+  function cancelRename() {
+    renaming = false;
+  }
+
+  async function commitRename() {
+    const newName = (renameValue || '').trim();
+    if (!newName) {
+      renaming = false;
+      return;
+    }
+
+    // If there's no current file path yet, just set the display name
+    if (!currentFile) {
+      appState.update(s => ({ ...s, currentFile: newName, statusMessage: `Named file: ${newName}` }));
+      addToast(`Named file: ${newName}`, 'success');
+      renaming = false;
+      return;
+    }
+
+    if (!isTauri) {
+      appState.update(s => ({ ...s, currentFile: newName }));
+      renaming = false;
+      return;
+    }
+
+    try {
+      const dir = await dirname(currentFile);
+      const newPath = await join(dir, newName);
+      if (newPath === currentFile) {
+        renaming = false;
+        return;
+      }
+      await renameFile(currentFile, newPath);
+      appState.update(s => ({ ...s, currentFile: newPath, statusMessage: `Renamed to ${newName}` }));
+      addToast(`Renamed to ${newName}`, 'success');
+    } catch (e) {
+      console.error('Rename failed:', e);
+      addToast(`Rename failed: ${e}`, 'error');
+    } finally {
+      renaming = false;
+    }
+  }
+
   onDestroy(() => {
+    // Check if we're in browser environment
+    if (typeof window === 'undefined') return;
+    
     // Cleanup TauriKeyHandler
     keyHandler.cleanup();
+    
+    // Remove global mouse event listeners
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  // No DOM keydown fallback
   });
   // Subscribe to app state
   $: ({
@@ -101,6 +250,7 @@
     isSaving,
     saveFilename,
     commandBarTitle,
+    commandBarPlaceholder,
     isAiLoading,
     isOnline,
     commandExecutionInProgress,
@@ -117,6 +267,8 @@
 
   // Function to properly hide and remove loading screen
   function hideLoadingScreen() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    
     try {
       // Get the loading container
       const loadingContainer = document.querySelector('.loading-container');
@@ -162,15 +314,17 @@
       }
       
       // Fix body styles
-      document.body.style.backgroundColor = '#1e1e1e';
-      document.body.style.overflow = 'auto';
-      document.body.style.height = '100%';
-      document.body.style.width = '100%';
-      
-      // Ensure html element has proper height/width
-      const htmlElement = document.documentElement;
-      htmlElement.style.height = '100%';
-      htmlElement.style.width = '100%'; 
+      if (typeof document !== 'undefined') {
+        document.body.style.backgroundColor = '#1e1e1e';
+        document.body.style.overflow = 'auto';
+        document.body.style.height = '100%';
+        document.body.style.width = '100%';
+        
+        // Ensure html element has proper height/width
+        const htmlElement = document.documentElement;
+        htmlElement.style.height = '100%';
+        htmlElement.style.width = '100%'; 
+      } 
       
       console.log('Loading screen removed, app should be fully visible');
     } catch (e) {
@@ -227,7 +381,10 @@
         
         try {
           const fileContent = await readTextFile(filePath);
-          appState.update(s => ({ ...s, content: fileContent, currentFile: filePath, hasUnsavedChanges: false }));
+          // Create a buffer and set bufferId
+          const createdBufferId = await invoke('create_new_buffer').catch(() => null) as number | null;
+          bufferId = createdBufferId;
+          appState.update(s => ({ ...s, content: fileContent, currentFile: filePath, hasUnsavedChanges: false, bufferId: createdBufferId }));
           
           // Set editor mode based on file extension
           const ext = filePath.split('.').pop()?.toLowerCase();
@@ -238,7 +395,7 @@
             ...s, 
             mode: detectedLanguage === 'markdown' || ext === 'md' ? 'markdown' : 'code',
             editorLanguage: detectedLanguage as string,
-            statusMessage: `Opened ${filePath}`
+            statusMessage: `Opened ${filePath}", bufferId: ${createdBufferId}`
           }));
           
           console.log(`Opened file from CLI: ${filePath}`);
@@ -259,12 +416,33 @@
         const inputElement = commandBarComponent.getInputElement();
         if (inputElement) {
           inputElement.focus();
+          // Let Tauri key handler know about the input for focusing on toggles
+          try { keyHandler.setCommandBarInput(inputElement); } catch {}
         }
       } catch (e) {
         console.error('Error focusing command input:', e);
       }
     }
   }
+
+  // Simple debounce helper
+  function debounce<T extends (...args: any[]) => any>(fn: T, wait = 800) {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    return (...args: Parameters<T>) => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), wait);
+    };
+  }
+
+  // Debounced buffer update to reduce IPC frequency
+  const debouncedUpdateBuffer = debounce(async (id: number | null, txt: string) => {
+    if (!isTauri || id == null) return;
+    try {
+      await invoke('update_buffer_content_command', { buffer_id: id, content: txt });
+    } catch (err) {
+      console.warn('Failed to debounced update buffer:', err);
+    }
+  }, 800);
 
   // Function to check for API key and prompt if missing
   async function checkApiKey() {
@@ -301,41 +479,224 @@
     }
   }
 
-  // Helper function to display toast notifications
-  function showToast(message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') {
-    addToast(message, type);
+  // Helper to route outputs to panel
+  function showOutput(content: string, kind: 'ai' | 'shell' | 'file' | 'system' | 'info' | 'error' = 'info', title?: string) {
+    addOutput(content, kind, title);
+    showPanel();
+    // If it's an error, trigger a short red pulse visual feedback
+    if (kind === 'error') {
+      try {
+        appState.update(s => ({ ...s, showRedPulse: true }));
+        setTimeout(() => appState.update(s => ({ ...s, showRedPulse: false })), 420);
+      } catch (e) {
+        console.warn('Failed to trigger red pulse', e);
+      }
+    }
   }
 
   // Function to execute commands
   async function executeCommand(command: string) {
+    // Clear command text but keep commandMode state intact until we know the result
     const [cmd, ...args] = command.toLowerCase().split(' ');
+    
+    // Get working directory from current file if available
+    let workingDir: string | null = null;
+    if (currentFile && isTauri) {
+      try {
+        workingDir = await dirname(currentFile);
+      } catch (e) {
+        console.warn('Failed to get file directory:', e);
+      }
+    }
+    
+    // Handle special API key setting commands
+    if (cmd === 'set' && args[0] === 'api_key') {
+      const apiKey = args.slice(1).join(' ');
+      if (apiKey && isTauri) {
+        try {
+          await invoke('set_api_key', { apiKey });
+          appState.update(s => ({ 
+            ...s, 
+            apiKey,
+            statusMessage: 'API key saved successfully',
+            commandMode: false
+          }));
+          addToast('API key saved successfully', 'success');
+          return;
+        } catch (e) {
+          addToast(`Error saving API key: ${e}`, 'error');
+          return;
+        }
+      } else {
+        addToast('Please provide a valid API key', 'error');
+        return;
+      }
+    }
     
     // 1. Check if it's an editor command
     const editorCommands: Record<string, () => Promise<void>> = {
       'new': async () => {
         const fileType = args[0] || 'txt';
-        // TODO: Implement new file creation
+        // Create new file with appropriate language mode
+  const languageMap: Record<string, string> = {
+          'markdown': 'markdown',
+          'md': 'markdown',
+          'javascript': 'javascript',
+          'js': 'javascript',
+          'typescript': 'typescript',
+          'ts': 'typescript',
+          'python': 'python',
+          'py': 'python',
+          'html': 'html',
+          'css': 'css',
+          'json': 'json',
+          'rust': 'rust',
+          'rs': 'rust',
+          'c': 'c',
+          'cpp': 'cpp'
+        };
+        
+  const language = languageMap[fileType] || 'plaintext';
+        const mode = language === 'markdown' ? 'markdown' : 'code';
+        
+        // create a new buffer and assign bufferId
+        const newBufferId = isTauri ? await invoke('create_new_buffer').catch(() => null) as number | null : null;
+        bufferId = newBufferId;
+        appState.update(s => ({ 
+          ...s, 
+          content: '', 
+          currentFile: '', 
+          editorLanguage: language,
+          mode: mode,
+          hasUnsavedChanges: false,
+          bufferId: newBufferId,
+          statusMessage: `Created new ${fileType} file`
+        }));
+        
+        addToast(`Created new ${fileType} file`, 'success');
       },
       'open': async () => {
-        // TODO: Implement file opening
+        // Trigger file dialog
+        if (isTauri) {
+          try {
+            const { open } = await import('@tauri-apps/api/dialog');
+            const selected = await open({
+              multiple: false,
+              filters: [{
+                name: 'All Files',
+                extensions: ['*']
+              }]
+            });
+            
+            if (selected && typeof selected === 'string') {
+              const fileContent = await readTextFile(selected);
+              const ext = selected.split('.').pop()?.toLowerCase();
+              const detectedLanguage = await invoke('get_language_mode', { path: selected })
+                .catch((_: any) => ext === 'md' ? 'markdown' : 'plaintext');
+              // create a buffer and set bufferId
+              const openedBufferId = isTauri ? await invoke('create_new_buffer').catch(() => null) as number | null : null;
+              bufferId = openedBufferId;
+              appState.update(s => ({ 
+                ...s, 
+                content: fileContent, 
+                currentFile: selected,
+                editorLanguage: detectedLanguage as string,
+                mode: detectedLanguage === 'markdown' || ext === 'md' ? 'markdown' : 'code',
+                hasUnsavedChanges: false,
+                bufferId: openedBufferId,
+                statusMessage: `Opened ${selected}`
+              }));
+              
+              addToast(`Opened ${selected}`, 'success');
+            }
+          } catch (e) {
+            addToast(`Error opening file: ${e}`, 'error');
+          }
+        }
       },
       'save': async () => {
-        // TODO: Implement save
+        if (isTauri && content) {
+          try {
+            // First update the buffer content (immediate)
+            if (bufferId == null) {
+              // create buffer if not present
+              bufferId = await invoke('create_new_buffer').catch(() => null) as number | null;
+              appState.update(s => ({ ...s, bufferId }));
+            }
+            await invoke('update_buffer_content_command', { buffer_id: bufferId || 0, content: content });
+
+            if (currentFile) {
+              // Save to existing file
+              await invoke('save_file', { 
+                buffer_id: bufferId || 0, 
+                path: currentFile 
+              });
+              appState.update(s => ({ 
+                ...s, 
+                hasUnsavedChanges: false,
+                statusMessage: `Saved ${currentFile}`
+              }));
+              addToast(`Saved ${currentFile}`, 'success');
+            } else {
+              // Save as new file
+              const { save } = await import('@tauri-apps/api/dialog');
+              const filePath = await save({
+                filters: [{
+                  name: 'All Files',
+                  extensions: ['*']
+                }]
+              });
+              
+              if (filePath) {
+                await invoke('save_file', { buffer_id: bufferId || 0, path: filePath });
+                appState.update(s => ({ 
+                  ...s, 
+                  currentFile: filePath,
+                  hasUnsavedChanges: false,
+                  statusMessage: `Saved ${filePath}`
+                }));
+                addToast(`Saved ${filePath}`, 'success');
+              }
+            }
+          } catch (e) {
+            addToast(`Error saving file: ${e}`, 'error');
+          }
+        }
       },
       'save as': async () => {
-        // TODO: Implement save as
-      },
-      'rename': async () => {
-        if (args.length < 2) {
-          throw new Error('Rename requires old and new filenames');
+        if (isTauri && content) {
+          try {
+            if (bufferId == null) {
+              bufferId = await invoke('create_new_buffer').catch(() => null) as number | null;
+              appState.update(s => ({ ...s, bufferId }));
+            }
+            await invoke('update_buffer_content_command', { buffer_id: bufferId || 0, content: content });
+
+            const { save } = await import('@tauri-apps/api/dialog');
+            const filePath = await save({
+              filters: [{
+                name: 'All Files',
+                extensions: ['*']
+              }]
+            });
+            
+            if (filePath) {
+              await invoke('save_file', { 
+                buffer_id: bufferId || 0, 
+                path: filePath 
+              });
+              appState.update(s => ({ 
+                ...s, 
+                currentFile: filePath,
+                hasUnsavedChanges: false,
+                statusMessage: `Saved as ${filePath}`
+              }));
+              addToast(`Saved as ${filePath}`, 'success');
+            }
+          } catch (e) {
+            addToast(`Error saving file: ${e}`, 'error');
+          }
         }
-        // TODO: Implement rename
-      },
-      'delete': async () => {
-        if (!args[0]) {
-          throw new Error('Delete requires filename');
-        }
-        // TODO: Implement delete
       },
       'exit': async () => {
         if (isTauri) {
@@ -367,10 +728,10 @@
       }
     };
 
-    if (cmd in editorCommands) {
+  if (cmd in editorCommands) {
       try {
         await editorCommands[cmd]();
-        appState.update(s => ({ ...s, commandMode: false }));
+    appState.update(s => ({ ...s, commandMode: false, commandText: '' }));
       } catch (e) {
         console.error('Error executing editor command:', e);
         appState.update(s => ({ 
@@ -383,126 +744,186 @@
       return;
     }
 
-    // 2. Check if it's a shell command
-    const shellCommands = [
-      'dir', 'cd', 'ls', 'pwd', 'git', 'npm', 'pip', 'python', 'node', 
-      'cargo', 'gcc', 'g++', 'make', 'docker', 'kubectl', 'terraform',
-      'aws', 'gcloud', 'az', 'systeminfo', 'tasklist', 'netstat',
-      'ipconfig', 'ifconfig', 'ping', 'tracert', 'nslookup', 'curl',
-      'wget', 'tar', 'zip', 'unzip', 'chmod', 'chown', 'sudo',
-      'apt-get', 'yum', 'brew', 'pacman', 'systemctl', 'journalctl',
-      'top', 'htop', 'ps', 'kill', 'killall', 'find', 'grep',
-      'sed', 'awk', 'sort', 'uniq', 'wc', 'cat', 'head', 'tail',
-      'less', 'more', 'tmux', 'screen', 'ssh', 'scp', 'rsync', 
-      'lynx', 'w3m', 'links', 'elinks', 'man', 'info', 'whatis', 
-      'apropos', 'locate', 'updatedb', 'which', 'whereis', 'type', 
-      'alias', 'history', 'clear', 'reset', 'logout', 'shutdown', 
-      'reboot', 'halt', 'poweroff', 'date', 'cal', 'bc', 'dc', 
-      'factor', 'seq', 'jot', 'yes', 'no', 'true', 'false', 'echo', 'printf'
-    ];
-
-    if (shellCommands.includes(cmd)) {
+  // 2. Check if it's a terminal command (starts with !)
+  if (command.trim().startsWith('!')) {
+    if (isTauri) {
       try {
         // Show loading indicator
         appState.update(s => ({ 
           ...s, 
           statusMessage: `Executing: ${command}...`,
-          commandExecutionInProgress: true 
+          commandExecutionInProgress: true,
+          isAiLoading: false
         }));
         
-        const output = await invoke('execute_terminal_command', { command });
+        const result = await invoke('execute_enhanced_command', { 
+          command: command.trim(),
+          apiKey: null,  // Don't pass API key for terminal commands
+          workingDir: workingDir
+        }) as any;
         
-        // Show the output in a nice format
-        appState.update(s => ({ 
-          ...s, 
-          statusMessage: `Command executed: ${command}`,
-          commandMode: true,
-          commandBarTitle: `Output: ${command}`,
-          commandExecutionInProgress: false
-        }));
-        
-        // Display output as a toast that stays longer
-        addToast(output as string, 'info', 10000);
-        
-        // Focus back on command input
-        setTimeout(() => {
-          if (commandBarComponent) {
-            const inputElement = commandBarComponent.getInputElement();
-            if (inputElement) {
-              inputElement.focus();
+  if (result.success) {
+          // Handle different command types
+          let displayMessage = result.output;
+          let toastType: 'success' | 'info' | 'warning' | 'error' = 'info';
+          
+          if (result.command_type === 'ai') {
+            // AI response - show output panel and KEEP command bar open
+            appState.update(s => ({ 
+              ...s, 
+              statusMessage: 'AI response received',
+              commandBarTitle: 'Ask another question or run a command',
+              commandBarPlaceholder: 'Ask AI or run a command (ESC for general commands)',
+              commandExecutionInProgress: false,
+              isAiLoading: false,
+              commandMode: true,
+              commandText: '',
+              suggestions: []
+            }));
+            showOutput(displayMessage || 'AI responded', 'ai', 'AI Response');
+            
+          } else if (result.command_type === 'shell' || result.command_type === 'file') {
+            // Show output in panel and KEEP command bar open for more terminal commands
+            appState.update(s => ({ 
+              ...s, 
+              statusMessage: `Command executed: ${command}`,
+              commandBarTitle: 'Run another command',
+              commandBarPlaceholder: 'Type a terminal command (ESC for general commands)',
+              commandExecutionInProgress: false,
+              isAiLoading: false,
+              commandMode: true,
+              commandText: '',
+              suggestions: []
+            }));
+            showOutput((displayMessage && displayMessage.trim()) ? displayMessage : 'Command completed successfully', result.command_type === 'shell' ? 'shell' : 'file', `Output: ${command}`);
+            
+          } else if (result.command_type === 'system') {
+            // System operations like minimize, maximize, close
+            const lower = command.trim().toLowerCase();
+            if (lower === 'minimize') await minimizeWindow();
+            if (lower === 'maximize' || lower === 'fullscreen') await maximizeWindow();
+            if (lower === 'close' || lower === 'quit' || lower === 'exit') await closeWindow();
+            appState.update(s => ({
+              ...s,
+              statusMessage: result.output || 'System command executed',
+              commandMode: false,
+              commandExecutionInProgress: false,
+              isAiLoading: false,
+              commandText: '',
+              suggestions: []
+            }));
+            if (displayMessage && displayMessage.trim()) {
+              showOutput(displayMessage, 'system', 'System');
+            }
+          } else {
+            // Other successful commands
+            appState.update(s => ({ 
+              ...s, 
+              statusMessage: result.output || 'Command executed successfully',
+              commandMode: false,
+              commandExecutionInProgress: false,
+              isAiLoading: false,
+              commandText: '',
+              suggestions: []
+            }));
+            
+            if (displayMessage && displayMessage.trim()) {
+              showOutput(displayMessage, 'info', 'Command');
             }
           }
-        }, 100);
+          
+        } else {
+          // Terminal command failed - show error
+          const errorMsg = result.error || 'Command failed';
+          appState.update(s => ({ 
+            ...s, 
+            statusMessage: errorMsg,
+            commandExecutionInProgress: false,
+            isAiLoading: false
+          }));
+          showOutput(errorMsg, 'error', 'Error');
+        }
         
       } catch (e) {
         console.error('Error executing terminal command:', e);
         appState.update(s => ({ 
           ...s, 
           statusMessage: `Error executing command: ${e}`,
-          commandMode: false,
-          commandExecutionInProgress: false
-        }));
-        addToast(`Error executing command: ${e}`, 'error');
-      }
-      return;
-    }
-
-    // 3. If not an editor or shell command, try AI
-    if ($appState.apiKey) {
-      try {
-        // Show loading indicator
-        appState.update(s => ({ 
-          ...s, 
-          statusMessage: 'Processing AI command...',
-          commandMode: true,
-          commandBarTitle: 'AI is thinking...',
-          isAiLoading: true
-        }));
-        
-        // TODO: Implement actual AI command handling
-        const aiResponse = "This is a placeholder for the AI response. In a real implementation, this would be the response from the AI model.";
-        
-        // Show AI response
-        setTimeout(() => {
-          appState.update(s => ({ 
-            ...s, 
-            statusMessage: 'AI response received',
-            commandBarTitle: 'AI Response',
-            isAiLoading: false
-          }));
-          
-          // Display AI response
-          addToast(aiResponse, 'info', 10000);
-          
-          // Focus back on command input
-          setTimeout(() => {
-            if (commandBarComponent) {
-              const inputElement = commandBarComponent.getInputElement();
-              if (inputElement) {
-                inputElement.focus();
-              }
-            }
-          }, 100);
-        }, 1000);
-        
-      } catch (e) {
-        console.error('Error processing AI command:', e);
-        appState.update(s => ({ 
-          ...s, 
-          statusMessage: `Error processing AI command: ${e}`,
-          commandMode: false,
+          commandExecutionInProgress: false,
           isAiLoading: false
         }));
-        addToast(`Error processing AI command: ${e}`, 'error');
+        showOutput(`Error executing command: ${e}`, 'error', 'Error');
+      } finally {
+        console.log('Terminal command execution cleanup');
+        appState.update(s => ({
+          ...s,
+          commandExecutionInProgress: false,
+          isAiLoading: false
+        }));
       }
     } else {
+      addToast('Terminal commands not available in this environment', 'warning');
+    }
+    return;
+  }
+
+  // 3. Everything else goes to AI
+  if (isTauri && $appState.apiKey) {
+    try {
       appState.update(s => ({ 
         ...s, 
-        statusMessage: 'Please set your API key to use AI features',
-        commandMode: false
+        statusMessage: 'Asking AI...',
+        commandExecutionInProgress: true,
+        isAiLoading: true
       }));
-      addToast('Please set your API key to use AI features', 'warning');
+      
+      const aiResult = await invoke('execute_enhanced_command', { 
+        command: `ai ${command}`,
+        apiKey: $appState.apiKey,
+        workingDir: null
+      }) as any;
+      
+      if (aiResult.success) {
+        appState.update(s => ({ 
+          ...s, 
+          statusMessage: 'AI response received',
+          commandBarTitle: 'Ask another question or run a command',
+          commandBarPlaceholder: 'Ask AI or run a command (ESC for general commands)',
+          commandExecutionInProgress: false,
+          isAiLoading: false,
+          commandMode: true,
+          commandText: '',
+          suggestions: []
+        }));
+        showOutput(aiResult.output || '(no response)', 'ai', 'AI Response');
+      } else {
+        throw new Error(aiResult.error || 'AI failed');
+      }
+    } catch (aiErr) {
+      console.error('Error with AI:', aiErr);
+      appState.update(s => ({ 
+        ...s, 
+        statusMessage: `AI error: ${aiErr}`,
+        commandExecutionInProgress: false,
+        isAiLoading: false
+      }));
+      showOutput(`AI error: ${aiErr}`, 'error', 'AI Error');
+    } finally {
+      appState.update(s => ({
+        ...s,
+        commandExecutionInProgress: false,
+        isAiLoading: false
+      }));
     }
+  } else {
+    // No AI key available
+    appState.update(s => ({ 
+      ...s, 
+      statusMessage: 'No AI key configured. Set one with: set api_key YOUR_KEY',
+      commandMode: false
+    }));
+    addToast('No AI key configured', 'warning');
+  }
   }
 
   // Function to generate command suggestions based on context
@@ -586,7 +1007,11 @@
 
   // Handle command bar events
   function handleCommandClose() {
-    appState.update(s => ({ ...s, commandMode: false }));
+    appState.update(s => ({ ...s, commandMode: false, commandText: '', suggestions: [], commandBarPlaceholder: 'Type a command or press Enter' }));
+    // Refocus editor after closing
+    setTimeout(() => {
+      focusEditor();
+    }, 100);
   }
 
   function handleCommandInput(event: CustomEvent) {
@@ -618,6 +1043,57 @@
     }
   }
 
+  // Handle command execution from command bar
+  function handleCommandExecution(event: CustomEvent) {
+    const { command } = event.detail;
+    console.log('Executing command from CommandBar:', command);
+    // Don't close command bar here - let executeCommand handle it based on success/failure
+    executeCommand(command);
+  }
+
+  // Handle command execution results from enhanced command bar
+  function handleCommandExecuted(event: CustomEvent) {
+    const { command, result } = event.detail;
+    console.log('Command executed:', command, 'Result:', result);
+    
+    // Handle specific command types
+    if (result.command_type === 'file') {
+      // Handle file operations
+      if (command.startsWith('ls') || command.startsWith('pwd')) {
+        appState.update(s => ({ ...s, statusMessage: 'File operation completed' }));
+      }
+    } else if (result.command_type === 'editor') {
+      // Handle editor operations
+      if (command === 'clear') {
+        appState.update(s => ({ ...s, content: '', hasUnsavedChanges: false }));
+      }
+    } else if (result.command_type === 'system') {
+      // Handle system operations like minimize, maximize, close
+      if (command === 'minimize') {
+        minimizeWindow();
+      } else if (command === 'maximize' || command === 'fullscreen') {
+        maximizeWindow();
+      } else if (command === 'close') {
+        closeWindow();
+      }
+    }
+    
+    // Update status
+    if (result.success) {
+      appState.update(s => ({ 
+        ...s, 
+        statusMessage: 'Command executed successfully',
+        commandMode: false 
+      }));
+    } else {
+      appState.update(s => ({ 
+        ...s, 
+        statusMessage: `Command failed: ${result.error}`,
+        commandMode: false 
+      }));
+    }
+  }
+
   // Function to close tutorial
   function closeTutorial() {
     appState.update(s => ({ 
@@ -644,11 +1120,7 @@
     appState.update(s => ({ ...s, showHelp: !s.showHelp }));
   }
 
-  // Event handlers
-  // Remove direct keydown handler to avoid conflict with TauriKeyHandler
-  // function handleKeydown(event: KeyboardEvent) {
-  //   ...existing code for keydown...
-  // }
+  // Event handlers: rely on Tauri layer for ESC and Cmd+K
 
   function handleClick(event: MouseEvent) {
     const target = event.target as Element;
@@ -664,6 +1136,8 @@
       appState.update(s => ({ ...s, showHelp: false }));
     }
   }
+
+  // Removed duplicate handleKeydown fallback
 
   // Window control functions
   async function minimizeWindow() {
@@ -696,7 +1170,56 @@
     }
   }
 
+  // Window dragging uses CSS -webkit-app-region: drag on top bar
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+
+  onMount(() => {
+    // Check if first run and show tutorial
+    invoke('check_has_run_before')
+      .then((hasRunBefore) => {
+        isFirstRun = !hasRunBefore;
+        if (isFirstRun) {
+          showTutorial = true;
+        }
+      })
+      .catch((e) => console.error('Error checking first run:', e));
+      
+  // No extra F1 handler; handled in Rust layer
+  return () => {};
+  });
+
+  function handleMouseDown(_: MouseEvent) {}
+
+  function handleMouseMove(event: MouseEvent) {
+    if (isDragging && isTauri) {
+      // The CSS -webkit-app-region: drag should handle the actual dragging
+      // We just track the state here for visual feedback
+      event.preventDefault();
+    }
+  }
+
+  function handleMouseUp() {
+    if (isDragging) {
+      isDragging = false;
+    }
+  }
+
+  async function handleDoubleClickFullscreen() {
+    if (isTauri) {
+      try {
+        await invoke('toggle_fullscreen');
+      } catch (e) {
+        console.error('Error toggling fullscreen:', e);
+        addToast('Error toggling fullscreen', 'error');
+      }
+    }
+  }
+
   function focusEditor() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    
     try {
       // Try focusing editor directly
       const editorElement = document.querySelector('.cm-editor');
@@ -708,75 +1231,143 @@
     }
   }
   
+  // When command mode opens, ensure input is focused and registered with key handler
+  $: if (commandMode) {
+    setTimeout(() => {
+      focusCommandInput();
+    }, 0);
+  }
+  
   function handleEditorFocusRequest() {
     console.log('Editor focus event received');
     focusEditor();
   }
 </script>
 
-<div id="app" class="app" on:click={handleClick}>
-  <div class="status-bar">
-    <div class="left-section">
-      <span class="app-title">Vuno</span>
+<main 
+  id="app" 
+  class="flex flex-col h-screen w-screen bg-black overflow-hidden" 
+  role="application" 
+  aria-label="Vuno Editor Application"
+  tabindex="-1"
+>
+  <div class="flex justify-between items-center px-2 py-1 bg-[#191919] text-gray-400 text-xs border-b border-gray-800 font-sans select-none relative z-10 h-7 min-h-7" role="banner" aria-label="Title bar">
+    <div class="flex items-center gap-2" data-tauri-drag-region>
       {#if currentFile}
-        <span class="current-file">{currentFile}</span>
+        {#if renaming}
+          <input
+            class="bg-transparent border border-gray-700 text-gray-100 rounded px-1 focus:outline-none focus:ring-1 focus:ring-gray-500 w-64 text-xs"
+            bind:value={renameValue}
+            on:keydown={(e) => {
+              if (e.key === 'Enter') commitRename();
+              if (e.key === 'Escape') cancelRename();
+            }}
+            on:blur={commitRename}
+            bind:this={renameInput}
+          />
+        {:else}
+          <button class="text-gray-100 hover:text-white hover:opacity-80 cursor-pointer transition-opacity relative z-20" style="-webkit-app-region: no-drag;" on:click={(e) => { e.stopPropagation(); startRename(); }}>{currentFile}</button>
+        {/if}
+      {:else}
+        {#if renaming}
+          <input
+            class="bg-transparent border border-gray-700 text-gray-100 rounded px-1 focus:outline-none focus:ring-1 focus:ring-gray-500 w-64 text-xs"
+            bind:value={renameValue}
+            on:keydown={(e) => {
+              if (e.key === 'Enter') commitRename();
+              if (e.key === 'Escape') cancelRename();
+            }}
+            on:blur={commitRename}
+            bind:this={renameInput}
+          />
+        {:else}
+          <button class="text-gray-500 hover:text-gray-300 hover:opacity-80 cursor-pointer transition-opacity relative z-20" style="-webkit-app-region: no-drag;" on:click={(e) => { e.stopPropagation(); startRename(); }}>untitled</button>
+        {/if}
       {/if}
     </div>
-    <div class="center-section">
-      <span class="status-message">{statusMessage}</span>
+    <div class="flex items-center gap-2" data-tauri-drag-region>
+      <span class="text-gray-400">{statusMessage}</span>
     </div>
-    <div class="right-section">
-      <span class="cursor-position">
+    <div class="flex items-center gap-2" data-tauri-drag-region>
+      <span class="text-gray-500 font-mono">
         {#if currentCursorPosition}
           Line {currentCursorPosition.line + 1}, Col {currentCursorPosition.column + 1}
         {/if}
       </span>
-      <button class="window-control minimize" on:click={minimizeWindow}>_</button>
-      <button class="window-control maximize" on:click={maximizeWindow}>□</button>
-      <button class="window-control close" on:click={closeWindow}>×</button>
     </div>
   </div>
   
-  <div class="editor-container">
-    <Editor 
-      bind:this={editorComponent}
-      content={content}
-      language={editorLanguage}
-      settings={editorSettings}
-      on:change={(e) => {
-        appState.update(s => ({
-          ...s,
-          content: e.detail.content,
-          hasUnsavedChanges: true,
-          currentLineCount: e.detail.lineCount || 0,
-          currentCursorPosition: e.detail.cursorPosition || { line: 0, ch: 0 }
-        }));
-      }}
-      on:save={() => {
-        // Handle save event
-        console.log('Save requested from editor');
-        // TODO: Implement save functionality
-      }}
-    />
+  <div class="flex-1 flex flex-col min-h-0 h-full relative overflow-hidden" on:dblclick={(e) => { e.stopPropagation(); openGlobalCommandBar(); }} role="button" aria-label="Double-click to open command menu" tabindex="0">
+  {#if mode === 'code'}
+    <div class="flex-1 flex w-full h-full min-h-0">
+      <Editor 
+        bind:this={editorComponent}
+        content={content}
+        language={editorLanguage}
+        bufferId={bufferId}
+        on:change={(e) => {
+          const newContent = e.detail.content;
+          appState.update(s => ({
+            ...s,
+            content: newContent,
+            hasUnsavedChanges: true,
+            currentLineCount: e.detail.lineCount || 0,
+            currentCursorPosition: e.detail.cursorPosition || { line: 0, ch: 0 }
+          }));
+
+          // Sync buffer to backend (non-blocking)
+          if (isTauri) {
+            debouncedUpdateBuffer(bufferId, newContent);
+          }
+        }}
+        on:save={async () => {
+          // Trigger save via existing command flow
+          await executeCommand('save');
+        }}
+      />
+    </div>
+  {/if}
     
-    {#if showMarkdownPreview && mode === 'markdown'}
-      <div class="markdown-preview" transition:fade={{ duration: 150 }}>
-        <MarkdownRenderer content={content} />
-      </div>
-    {/if}
+  {#if mode === 'markdown'}
+    <div class="flex-1 flex w-full h-full min-h-0 overflow-hidden">
+      <MarkdownRenderer 
+        bind:this={editorComponent}
+        content={content}
+        on:change={(e) => {
+          const newContent = e.detail.content;
+          appState.update(s => ({
+            ...s,
+            content: newContent,
+            hasUnsavedChanges: true,
+            currentLineCount: (newContent || '').split('\n').length,
+            currentCursorPosition: { line: 0, column: 0 }
+          }));
+          if (isTauri) {
+            debouncedUpdateBuffer(bufferId, newContent);
+          }
+        }}
+        on:save={async () => {
+          await executeCommand('save');
+        }}
+      />
+    </div>
+  {/if}
   </div>
   
   {#if commandMode}
-    <div class="command-overlay">
+    <div class="command-overlay command-content" role="dialog" aria-modal="false" aria-label="Global Command Bar">
       <CommandBar 
         bind:this={commandBarComponent}
-        title={commandBarTitle || 'What would you like to do?'}
+        title={commandBarTitle || 'What would you like to do today?'}
+        placeholder={commandBarPlaceholder || 'Type a command or press Enter'}
         commandText={commandText}
         showSuggestions={showSuggestions}
         suggestions={suggestions}
+        isVisible={commandMode}
         on:close={handleCommandClose}
         on:input={handleCommandInput}
-        on:execute={(e) => executeCommand(e.detail.command)}
+        on:command={handleCommandExecution}
+        on:command-executed={handleCommandExecuted}
       />
     </div>
   {/if}
@@ -796,62 +1387,19 @@
     </div>
   {/if}
   
+  <BottomOutput />
   <Toast />
-</div>
+
+  {#if $appState.showRedPulse}
+    <div 
+      class="fixed inset-0 pointer-events-none z-50" 
+      style="box-shadow: inset 0 0 120px 40px rgba(255, 0, 50, 0.35);"
+      in:fade={{ duration: 80 }}
+      out:fade={{ duration: 340 }}
+    ></div>
+  {/if}
+</main>
 
 <style>
-  :global(body) {
-    margin: 0;
-    padding: 0;
-    font-family: 'Onest', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
-    background-color: #1e1e1e;
-    color: #e0e0e0;
-    height: 100vh;
-    width: 100vw;
-    overflow: hidden;
-  }
-  
-  :global(html) {
-    height: 100%;
-    width: 100%;
-  }
-  
-  .app {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    width: 100vw;
-    background-color: #1e1e1e;
-    overflow: hidden;
-  }
-  
-  .editor-container {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .status-bar {
-    display: flex;
-    justify-content: space-between;
-    padding: 4px 8px;
-    background-color: #1a1a1a;
-    color: #cccccc;
-    font-size: 12px;
-    user-select: none;
-    border-bottom: 1px solid #333;
-    font-family: 'Onest', sans-serif;
-    cursor: grab;
-    -webkit-user-select: none;
-    -webkit-app-region: drag;
-  }
-  
-  .status-bar:active {
-    cursor: grabbing;
-  }
-
+  /* Global html/body styles are defined in src/global.css */
 </style>
-
-<MarkdownRenderer
-  content={content}
-/>

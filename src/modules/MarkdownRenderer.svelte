@@ -1,26 +1,43 @@
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  const browser = typeof window !== 'undefined';
   import { marked } from 'marked';
-  import * as markedHighlight from 'marked-highlight';
+  import { markedHighlight } from 'marked-highlight';
   import { gfmHeadingId } from 'marked-gfm-heading-id';
   import { getHighlighter } from 'shiki';
   import { fly } from 'svelte/transition';
   
   export let content: string = '';
   
+  /*****************
+   * Types
+   *****************/
+  type CommandBarMode = 'menu' | 'slash';
+  interface CommandSuggestion { cmd: string; description: string; icon: string; }
+
+  /*****************
+   * State
+   *****************/
   let renderedContent = '';
-  let markdownElement: HTMLElement;
   let editorElement: HTMLTextAreaElement;
+  let previewElement: HTMLElement;
   let highlighter: any = null;
-  let loading = true;
-  let editing = false;
-  let editingContent = '';
+
+  let editing = true; // start in edit mode
+  let editingContent = content || '';
+  let loading = false; // reserved for future async states
+
   let commandBarActive = false;
+  let commandBarMode: CommandBarMode = 'menu';
   let commandText = '';
   let commandBarPosition = { x: 0, y: 0 };
-  let commandBarInput: HTMLInputElement;
-  let commandSuggestions = [
-    // Text formatting
+  let selectedSuggestion = 0;
+    // Custom caret tracking state
+    let caretPosition = { x: 0, y: 0, height: 20 };
+    let mirrorElement: HTMLDivElement | null = null;
+
+  // Full command suggestion list
+  const commandSuggestions: CommandSuggestion[] = [
     { cmd: 'h1', description: 'Heading 1', icon: 'H1' },
     { cmd: 'h2', description: 'Heading 2', icon: 'H2' },
     { cmd: 'h3', description: 'Heading 3', icon: 'H3' },
@@ -30,124 +47,69 @@
     { cmd: 'inlinecode', description: 'Inline code', icon: '`' },
     { cmd: 'quote', description: 'Quote block', icon: '"' },
     { cmd: 'divider', description: 'Divider line', icon: '—' },
-    
-    // Lists
     { cmd: 'list', description: 'Bullet list', icon: '•' },
     { cmd: 'numbered', description: 'Numbered list', icon: '1.' },
-    { cmd: 'checklist', description: 'Check list', icon: '☑' },
-    
-    // Tables and media
+    { cmd: 'checklist', description: 'Task list', icon: '☑' },
     { cmd: 'table', description: 'Insert table', icon: '⊞' },
     { cmd: 'image', description: 'Insert image', icon: '🖼' },
-    { cmd: 'link', description: 'Insert link', icon: '🔗' },
+    { cmd: 'link', description: 'Insert link', icon: '🔗' }
   ];
 
   // Only working commands - for Escape menu (non-shift menu)
-  let escapeMenuCommands = ['h1', 'h2', 'h3', 'bold', 'code', 'inlinecode', 'table', 'list', 'numbered', 'checklist', 'quote', 'divider', 'link', 'image'];
-  let filteredSuggestions = [...commandSuggestions];
+  const escapeMenuCommands = ['h1', 'h2', 'h3', 'bold', 'code', 'inlinecode', 'table', 'list', 'numbered', 'checklist', 'quote', 'divider', 'link', 'image'];
+  let filteredSuggestions: CommandSuggestion[] = [...commandSuggestions];
   let shiftPressed = false;
   let shiftKeyDownTime = 0; // Track when shift was pressed down
   let shiftKeyTapped = false; // Track if shift was tapped quickly
   
   const dispatch = createEventDispatcher();
   
-  // Add debounce function for performance
-  function debounce(func: Function, wait: number) {
-    let timeout: ReturnType<typeof setTimeout>;
-    return function(...args: any[]) {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(null, args), wait);
-    };
-  }
-  
-  // Cached render results for performance
-  const renderCache = new Map<string, string>();
+  // (debounce & cache removed for instant rendering)
   
   async function setupHighlighter() {
     try {
-      // Define WASM and theme paths for Shiki
-      const wasmPath = '/dist/onig.wasm';  // Will be served from static folder
-      const themePath = '/themes/github-dark.json'; // Will be served from static folder
-      
-      // Only load essential languages initially
+      // Try to initialize Shiki in the background; don't block rendering
       highlighter = await getHighlighter({
-        theme: themePath, // Use the path to theme instead of name
-        langs: ['javascript', 'markdown'], // Reduced initial languages
-        paths: {
-          wasm: wasmPath // Tell Shiki where to find the WASM file
-        }
+        theme: 'github-dark',
+        langs: ['javascript', 'typescript', 'python', 'html', 'css', 'json', 'markdown', 'rust', 'c', 'cpp', 'java', 'go', 'shell', 'bash', 'sql']
       });
       
-      // Configure marked with shiki highlighter
       marked.use(
-        markedHighlight.markedHighlight({
+        markedHighlight({
           langPrefix: 'shiki language-',
           highlight(code, lang) {
-            if (!highlighter) return code;
-            
+            if (!highlighter) return `<pre><code>${code}</code></pre>`;
             try {
-              // Load language on demand if not already loaded
-              if (lang && !highlighter.getLoadedLanguages().includes(lang)) {
-                // For unknown languages, fallback to text
-                return highlighter.codeToHtml(code, { lang: 'text' });
+              const langMap: Record<string, string> = { js: 'javascript', ts: 'typescript', py: 'python', rs: 'rust', sh: 'shell' };
+              const actualLang = langMap[lang || ''] || lang || 'text';
+              if (!highlighter.getLoadedLanguages().includes(actualLang)) {
+                return `<pre><code class="language-${actualLang}">${code}</code></pre>`;
               }
-              
-              return highlighter.codeToHtml(code, { lang: lang || 'text' });
+              return highlighter.codeToHtml(code, { lang: actualLang });
             } catch (err) {
               console.error('Highlight error:', err);
-              return code;
+              return `<pre><code class="language-${lang || 'text'}">${code}</code></pre>`;
             }
           }
         }),
         gfmHeadingId()
       );
-      
-      // Set options
-      marked.setOptions({
-        gfm: true, // GitHub Flavored Markdown
-        breaks: true, // Convert \n to <br>
-      });
-      
-      loading = false;
+      marked.setOptions({ gfm: true, breaks: true });
       renderMarkdown();
     } catch (error) {
       console.error('Failed to initialize highlighter:', error);
-      
-      // Skip syntax highlighting and continue with basic markdown
-      marked.setOptions({
-        gfm: true,
-        breaks: true
-      });
-      
-      loading = false;
+      marked.setOptions({ gfm: true, breaks: true });
       renderMarkdown();
     }
   }
   
-  // Optimize markdown rendering with caching
+  // Instant markdown rendering
   function renderMarkdown() {
-    if (!editingContent) return;
-    
-    const cacheKey = editingContent;
-    
-    // Check if we have a cached version
-    if (renderCache.has(cacheKey)) {
-      renderedContent = renderCache.get(cacheKey) || '';
-      return;
-    }
+    if (editingContent == null) return;
     
     try {
       // Render the markdown
       const rendered = marked.parse(editingContent);
-      
-      // Save to cache (limit cache size to prevent memory issues)
-      if (renderCache.size > 50) {
-        // Clear oldest entries if cache gets too large
-        const keys = Array.from(renderCache.keys());
-        renderCache.delete(keys[0]);
-      }
-      
-      renderCache.set(cacheKey, rendered);
       renderedContent = rendered;
     } catch (error: any) {
       console.error('Markdown rendering error:', error);
@@ -156,16 +118,14 @@
     }
   }
   
-  // Debounced version of renderMarkdown for better performance
-  const debouncedRenderMarkdown = debounce(renderMarkdown, 300);
-  
   onMount(() => {
     // First setup content and editor state
     editingContent = content || '';
     editing = true;
     
     // Setup the highlighter (async operation that might fail)
-    setupHighlighter();
+    // Start async without affecting UI readiness
+    setTimeout(() => { setupHighlighter(); }, 0);
     
     // Set a small delay to ensure DOM is ready
     setTimeout(() => {
@@ -185,58 +145,46 @@
       }
     }, 100);
     
-    // Add document click listener only
+  // Add document click listener only
     document.addEventListener('click', handleDocumentClick);
+  // Attach global key listeners for Escape and Shift tap
+  window.addEventListener('keydown', handleGlobalKeydown, true);
+  window.addEventListener('keyup', handleGlobalKeyup, true);
+    setTimeout(() => { updateCaretPosition(); }, 150);
   });
   
   onDestroy(() => {
+    // Clean up highlighter and event listeners
     highlighter = null;
-    document.removeEventListener('click', handleDocumentClick);
+    if (browser) {
+      document.removeEventListener('click', handleDocumentClick);
+      window.removeEventListener('keydown', handleGlobalKeydown, true);
+      window.removeEventListener('keyup', handleGlobalKeyup, true);
+    }
+    if (mirrorElement && mirrorElement.parentNode) mirrorElement.parentNode.removeChild(mirrorElement);
   });
   
   // Watch for external content changes
-  $: {
-    if (content && !editing && content !== editingContent) {
-      editingContent = content;
-      debouncedRenderMarkdown();
-    }
+  $: if (content && !editing && content !== editingContent) {
+    editingContent = content;
+    renderMarkdown();
   }
   
   // Handle changes to content from parent
-  $: {
-    if (content && !loading) {
-      if (!editing) {
-        // Only update editingContent when we're not in edit mode
-        editingContent = content;
-        debouncedRenderMarkdown();
-      }
-    }
+  $: if (content && !loading && !editing) {
+    editingContent = content;
+    renderMarkdown();
   }
   
   // Handle updates when editing
   function handleContentUpdate() {
-    if (editing) {
-      // When editing, reflect changes to content
-      dispatch('update', { content: editingContent });
-      debouncedRenderMarkdown();
-    }
+    if (!editing) return;
+    dispatch('update', { content: editingContent });
+    renderMarkdown();
   }
   
   // Live preview handling
-  let livePreviewTimer: any = null;
-  function handleMarkdownInput(event: Event) {
-    const target = event.target as HTMLTextAreaElement;
-    editingContent = target.value;
-    
-    // Process live markdown formatting
-    processLiveMarkdown(target);
-    
-    // Notify parent but don't update our own content variable
-    dispatch('update', { content: editingContent });
-    
-    // Render the markdown with debounce
-    debouncedRenderMarkdown();
-  }
+  // (Removed old debounced live preview handler)
   
   function processLiveMarkdown(target: HTMLTextAreaElement) {
     const cursorPos = target.selectionStart;
@@ -251,23 +199,9 @@
       // Leave it as is, it will be rendered as H1
     }
     
-    // Check for bold with asterisks - if we just completed **text**
-    if (textBeforeCursor.endsWith("**") && !textBeforeCursor.endsWith("\\**")) {
-      const priorText = textBeforeCursor.substring(0, textBeforeCursor.length - 2);
-      const boldMatch = priorText.match(/\*\*([^*]+)$/);
-      if (boldMatch) {
-        // Don't auto-format while typing, just display it correctly when rendered
-      }
-    }
-    
-    // Check for italics with single asterisk
-    if (textBeforeCursor.endsWith("*") && !textBeforeCursor.endsWith("\\*")) {
-      const priorText = textBeforeCursor.substring(0, textBeforeCursor.length - 1);
-      const italicMatch = priorText.match(/(?<!\*)\*([^*]+)$/);
-      if (italicMatch) {
-        // Don't auto-format while typing, just display it correctly when rendered
-      }
-    }
+  // Auto-wrap selection when typing quick patterns like **text** or *text*
+  // This keeps typing natural; rendering already reflects styling.
+  // Additional conversion is done on space below for heading markers.
     
     // Check for code block
     if (textBeforeCursor.endsWith("```") && !textBeforeCursor.endsWith("\\```")) {
@@ -290,6 +224,38 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
+    // If inline command bar is open, handle navigation keys and ESC here first
+    if (commandBarActive) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCommandBar();
+        return;
+      }
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        selectedSuggestion = (selectedSuggestion + 1 + filteredSuggestions.length) % (filteredSuggestions.length || 1);
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        selectedSuggestion = (selectedSuggestion - 1 + filteredSuggestions.length) % (filteredSuggestions.length || 1);
+        return;
+      }
+      if (event.key === 'Enter') {
+        // Apply the currently selected suggestion; also remove the '/query' trigger
+        event.preventDefault();
+        const cmd = filteredSuggestions.length > 0
+          ? (typeof filteredSuggestions[selectedSuggestion] === 'string' ? filteredSuggestions[selectedSuggestion] : (filteredSuggestions[selectedSuggestion] as any).cmd)
+          : commandText;
+        applyInlineCommand(String(cmd || ''));
+        // After applying, close the command bar and clear state
+        closeCommandBar();
+        return;
+      }
+      // For other keys, update the query from textarea after the key is processed in input handler
+      // We'll recompute commandText in handleEditorInput
+    }
     // Handle Tab key to insert spaces instead of changing focus
     if (event.key === 'Tab') {
       event.preventDefault();
@@ -310,64 +276,142 @@
       dispatch('update', { content: editingContent });
       return;
     }
-    
-    // For Enter key - modify approach to force a newline insertion
-    if (event.key === 'Enter') {
-      // Let default browser behavior handle enter press first
-      // But also manually insert a newline to guarantee it works
+
+    // Slash command disabled - was causing issues with Enter key
+    // if (event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    //   if (!commandBarActive) {
+    //     commandBarMode = 'slash';
+    //     openCommandBarAtCursor();
+    //     event.stopPropagation();
+    //     selectedSuggestion = 0;
+    //   }
+    // }
+    // Never treat heading hash (#) as a slash trigger; if active with empty query close
+    if (event.key === '#') {
+      if (commandBarActive && commandBarMode === 'slash' && commandText === '') {
+        closeCommandBar();
+      }
+      return; // Do not process '#' further for command palette logic
+    }
+
+    // Handle space key for live markdown formatting (Notion-like triggers)
+    if (event.key === ' ') {
       const target = event.target as HTMLTextAreaElement;
-      const start = target.selectionStart;
-      const end = target.selectionEnd;
+      const cursorPos = target.selectionStart;
+      const textBeforeCursor = target.value.substring(0, cursorPos);
+      const currentLine = getCurrentLine(target.value, cursorPos);
       
-      // Insert newline at cursor position
-      const newValue = target.value.substring(0, start) + '\n' + target.value.substring(end);
-      
-      // We need to delay this slightly to not interfere with browser's default handling
-      setTimeout(() => {
-        target.value = newValue;
+      // Check for markdown patterns at the beginning of lines
+      if (currentLine.match(/^#{1,6}$/)) {
+        // Convert # to heading after space
+        event.preventDefault();
+        const headingLevel = currentLine.length;
+        const beforeLine = target.value.substring(0, cursorPos - currentLine.length);
+        const afterCursor = target.value.substring(cursorPos);
         
-        // Move cursor after inserted newline
-        target.selectionStart = target.selectionEnd = start + 1;
+        // Replace with heading and add space
+        const newText = beforeLine + '#'.repeat(headingLevel) + ' ' + afterCursor;
+        target.value = newText;
+        target.selectionStart = target.selectionEnd = cursorPos + 1;
         
-        // Update our tracked content
-        editingContent = target.value;
+        editingContent = newText;
         dispatch('update', { content: editingContent });
-        debouncedRenderMarkdown();
-      }, 0);
+  renderMarkdown();
+        return;
+      }
+
+      // Convert -- to em dash on space
+      if (/--$/.test(currentLine)) {
+        event.preventDefault();
+        const before = target.value.substring(0, cursorPos - 2);
+        const after = target.value.substring(cursorPos);
+        const newText = before + '—' + ' ' + after;
+        target.value = newText;
+        const newPos = before.length + 2; // em dash plus space
+        target.selectionStart = target.selectionEnd = newPos;
+        editingContent = newText;
+        dispatch('update', { content: editingContent });
+  renderMarkdown();
+        return;
+      }
+
+      // Convert ~~text~~ to strikethrough naturally via rendering; no text mutation needed
+      
+      // Auto-complete bold/italic patterns
+      if (currentLine.endsWith('**')) {
+        // Don't auto-complete, let user type normally
+      } else if (currentLine.endsWith('*') && !currentLine.endsWith('**')) {
+        // Don't auto-complete, let user type normally  
+      }
     }
     
+    // For Enter key - handle list continuation
+    if (event.key === 'Enter') {
+      const target = event.target as HTMLTextAreaElement;
+      const cursorPos = target.selectionStart;
+      const currentLine = getCurrentLine(target.value, cursorPos);
+      
+      // Continue lists
+      const listMatch = currentLine.match(/^(\s*)([-*+]|\d+\.)\s/);
+      if (listMatch) {
+        event.preventDefault();
+        const indent = listMatch[1];
+        const bullet = listMatch[2];
+        
+        const beforeCursor = target.value.substring(0, cursorPos);
+        const afterCursor = target.value.substring(cursorPos);
+        
+        let newBullet = bullet;
+        if (bullet.match(/\d+\./)) {
+          const num = parseInt(bullet) + 1;
+          newBullet = `${num}.`;
+        }
+        
+        const newText = beforeCursor + '\n' + indent + newBullet + ' ' + afterCursor;
+        target.value = newText;
+        target.selectionStart = target.selectionEnd = cursorPos + indent.length + newBullet.length + 2;
+        
+        editingContent = newText;
+        dispatch('update', { content: editingContent });
+  renderMarkdown();
+        return;
+      }
+    }
+    
+    // ESC anywhere closes inline command bar
+    if (event.key === 'Escape' && commandBarActive) {
+      event.preventDefault();
+      closeCommandBar();
+      return;
+    }
+
     // Allow Ctrl+S for saving
     if ((event.ctrlKey || event.metaKey) && event.key === 's') {
       event.preventDefault();
       saveContent();
+      // Notify parent to perform save flow
+      dispatch('save');
     }
+    // Schedule caret measurement next frame
+    requestAnimationFrame(updateCaretPosition);
+  }
+
+  function getCurrentLine(text: string, cursorPos: number): string {
+    const lines = text.substring(0, cursorPos).split('\n');
+    return lines[lines.length - 1];
   }
   
   // Handle global keydown for command/shortcuts
   function handleGlobalKeydown(event: KeyboardEvent) {
-    // Always handle Escape regardless of editing state to improve reliability
+    // Only handle Escape for our inline command bar; let global handlers process others
     if (event.key === 'Escape') {
-      // If command bar is active, close it first
       if (commandBarActive) {
         closeCommandBar();
         event.preventDefault();
         event.stopPropagation();
         return;
       }
-      
-      // If we're in editing mode, handle confirmation
-      if (editing) {
-        // Ask for confirmation if content was changed
-        if (editingContent !== content) {
-          if (confirm('Discard changes?')) {
-            cancelEditing();
-          }
-        } else {
-          cancelEditing();
-        }
-        event.preventDefault();
-        event.stopPropagation();
-      }
+      // Do not intercept ESC for general editing; allow global command bar toggle to work
     }
     
     // Track Shift key state and timestamp when it was pressed
@@ -410,23 +454,7 @@
           } else if (!event.ctrlKey && !event.altKey && !event.metaKey) {
             // Position and show command bar
             if (editorElement) {
-              const cursorPos = editorElement.selectionStart;
-              const rect = editorElement.getBoundingClientRect();
-              const lineHeight = parseInt(window.getComputedStyle(editorElement).lineHeight);
-              
-              // Calculate approximate cursor position
-              const textUntilCursor = editorElement.value.substring(0, cursorPos);
-              const lines = textUntilCursor.split('\n');
-              const currentLine = lines.length;
-              const verticalPos = rect.top + (currentLine * lineHeight) - editorElement.scrollTop;
-              
-              // Position command bar at cursor
-              commandBarPosition = { 
-                x: rect.left + 20, 
-                y: verticalPos + 20
-              };
-              
-              showCommandBar();
+              openCommandBarAtCursor();
             }
           }
         }
@@ -457,10 +485,8 @@
   }
 
   // Watch for changes in editingContent
-  $: {
-    if (editing && editorElement) {
-      syncTextareaValue();
-    }
+  $: if (editing && editorElement) {
+    syncTextareaValue();
   }
 
   function handleEditorInput(event: Event) {
@@ -470,44 +496,32 @@
     if (event.target) {
       processLiveMarkdown(event.target as HTMLTextAreaElement);
     }
+
+    // If the inline slash menu is open, derive the query from the text after the last '/'
+  if (commandBarActive && editorElement) {
+      updateCommandQueryFromText();
+    }
     
     // Notify parent but don't update our own content variable
     dispatch('update', { content: editingContent });
     
     // Render the markdown with debounce
-    debouncedRenderMarkdown();
+  renderMarkdown();
+    updateCaretPosition();
   }
   
   function startEditing() {
     editing = true;
-    
-    // Update content to ensure correct state 
     editingContent = content || '';
-    
-    // Force a UI update before focusing
     setTimeout(() => {
-      if (editorElement) {
-        // Force textarea value to match editingContent
-        editorElement.value = editingContent;
-        
-        // Make sure element is editable
-        editorElement.readOnly = false;
-        editorElement.setAttribute('contenteditable', 'true');
-        
-        // Focus the editor with forced re-rendering
-        editorElement.blur();
-        editorElement.focus();
-        
-        // Place cursor at the end of text
-        editorElement.selectionStart = editorElement.selectionEnd = editingContent.length;
-        
-        // Simulate an input event to ensure everything is updated
-        const inputEvent = new Event('input', { bubbles: true });
-        editorElement.dispatchEvent(inputEvent);
-      } else {
-        console.warn('Editor element not found');
-      }
-    }, 50);
+      if (!editorElement) return;
+      editorElement.value = editingContent;
+      editorElement.readOnly = false;
+      editorElement.setAttribute('contenteditable', 'true');
+      editorElement.focus();
+      editorElement.selectionStart = editorElement.selectionEnd = editingContent.length;
+      editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+    }, 30);
   }
   
   // Save content to parent without exiting edit mode
@@ -524,7 +538,7 @@
   }
   
   // Handle markdown preview click to start editing
-  function handlePreviewClick(event: MouseEvent) {
+  function handlePreviewClick(event: MouseEvent | KeyboardEvent) {
     // Prevent event from bubbling to parent elements
     event.preventDefault();
     event.stopPropagation();
@@ -558,38 +572,75 @@
         // Simulate an input event to ensure everything is updated
         const inputEvent = new Event('input', { bubbles: true });
         editorElement.dispatchEvent(inputEvent);
+        updateCaretPosition();
       }
     }, 50);
   }
   
   function showCommandBar() {
+    // Always clear state on open
     commandBarActive = true;
     commandText = '';
     filteredSuggestions = [...commandSuggestions];
-    
-    // Ensure focus is set after a brief delay
-    setTimeout(() => {
-      if (commandBarInput) {
-        commandBarInput.focus();
-      }
-    }, 0);
+    selectedSuggestion = 0;
+  }
+
+  // Helper to open inline command bar near the current caret position
+  function openCommandBarAtCursor() {
+    if (!editorElement) return;
+  const cursorPos = editorElement.selectionStart || 0;
+    const rect = editorElement.getBoundingClientRect();
+    const style = window.getComputedStyle(editorElement);
+  const lh = parseInt(style.lineHeight || '0', 10);
+  const lineHeight = Number.isFinite(lh) && lh > 0 ? lh : 20;
+    const textUntilCursor = editorElement.value.substring(0, cursorPos);
+    const lines = textUntilCursor.split('\n');
+    const currentLine = Math.max(1, lines.length);
+    const verticalPos = rect.top + currentLine * lineHeight - editorElement.scrollTop;
+    // Approximate X near left margin; precise glyph measurement is overkill here
+    commandBarPosition = {
+      x: rect.left + 20,
+      y: verticalPos + 10
+    };
+    showCommandBar();
   }
 
   function closeCommandBar() {
     commandBarActive = false;
+    commandBarMode = 'menu';
     commandText = '';
     filteredSuggestions = [];
+    selectedSuggestion = 0;
+    // Refocus editor for accessibility
+    if (editorElement) {
+      editorElement.focus();
+      updateCaretPosition();
+    }
   }
 
-  function handleCommandInput(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const value = input.value.toLowerCase();
-    
-    // Filter suggestions based on input
-    filteredSuggestions = commandSuggestions.filter(s => 
-      s.cmd.toLowerCase().includes(value) || 
-      s.description.toLowerCase().includes(value)
-    );
+  // Update commandText by parsing text around the caret, looking for '/<query>' immediately before the caret
+  function updateCommandQueryFromText() {
+    if (!editorElement) return;
+  if (commandBarMode !== 'slash') return;
+    const pos = editorElement.selectionStart || 0;
+    const text = editingContent;
+    // Find the last '/' before the caret on the same line
+    const lineStart = text.lastIndexOf('\n', Math.max(0, pos - 1)) + 1;
+    const slashIndex = text.lastIndexOf('/', pos - 1);
+    if (slashIndex >= lineStart) {
+      const raw = text.substring(slashIndex + 1, pos);
+      commandText = raw.toLowerCase();
+      // Filter based on current query
+      filteredSuggestions = commandSuggestions.filter(s =>
+        s.cmd.toLowerCase().includes(commandText) || s.description.toLowerCase().includes(commandText)
+      );
+      if (!filteredSuggestions.length) {
+        filteredSuggestions = [...commandSuggestions];
+      }
+    } else {
+      // Slash was removed; close the menu
+      closeCommandBar();
+    }
   }
 
   function handleSuggestionClick(cmd: string) {
@@ -598,16 +649,116 @@
   }
 
   function executeCommand(cmd: string) {
-    // Execute the command logic here
-    dispatch('command', { command: cmd });
+    // Apply markdown edit inline like Notion/Obsidian
+    if (!editorElement) return;
+    const selStart = editorElement.selectionStart;
+    const selEnd = editorElement.selectionEnd;
+
+    const apply = (newText: string, newSelStart: number, newSelEnd: number) => {
+      editingContent = newText;
+      // Push to textarea and selection
+      editorElement.value = newText;
+      editorElement.selectionStart = newSelStart;
+      editorElement.selectionEnd = newSelEnd;
+      dispatch('update', { content: editingContent });
+  renderMarkdown();
+    };
+
+    const getLineRange = (text: string, index: number) => {
+      let start = text.lastIndexOf('\n', Math.max(0, index - 1));
+      start = start === -1 ? 0 : start + 1;
+      let end = text.indexOf('\n', index);
+      end = end === -1 ? text.length : end;
+      return { start, end };
+    };
+
+    const replaceLinePrefix = (prefix: string) => {
+      const { start, end } = getLineRange(editingContent, selStart);
+      const line = editingContent.slice(start, end);
+      const stripped = line.replace(/^\s*(#{1,6}\s+|>\s+|- \[ \]\s+|-\s+|\d+\.\s+)?/, '');
+      const newLine = `${prefix}${stripped}`;
+      const newText = editingContent.slice(0, start) + newLine + editingContent.slice(end);
+      const delta = newLine.length - line.length;
+      apply(newText, selStart + delta, selEnd + delta);
+    };
+
+    const wrapSelection = (left: string, right: string = left) => {
+      const before = editingContent.slice(0, selStart);
+      const selected = editingContent.slice(selStart, selEnd);
+      const after = editingContent.slice(selEnd);
+      const newSelected = selected || '';
+      const newText = before + left + newSelected + right + after;
+      const cursorStart = selStart + left.length;
+      const cursorEnd = selEnd + left.length;
+      apply(newText, cursorStart, cursorEnd);
+    };
+
+    const insertBlock = (block: string) => {
+      const { start, end } = getLineRange(editingContent, selStart);
+      const prefix = editingContent.slice(0, start);
+      const suffix = editingContent.slice(end);
+      const sepBefore = start > 0 && editingContent[start - 1] !== '\n' ? '\n' : '';
+      const sepAfter = end < editingContent.length && editingContent[end] !== '\n' ? '\n' : '';
+      const insertion = `${sepBefore}${block}${sepAfter}`;
+      const newText = prefix + insertion + suffix;
+      const newCaret = (prefix + insertion).length;
+      apply(newText, newCaret, newCaret);
+    };
+
+    switch (cmd) {
+      case 'h1': replaceLinePrefix('# '); break;
+      case 'h2': replaceLinePrefix('## '); break;
+      case 'h3': replaceLinePrefix('### '); break;
+      case 'bold': wrapSelection('**'); break;
+      case 'italic': wrapSelection('*'); break;
+      case 'inlinecode': wrapSelection('`'); break;
+      case 'quote': replaceLinePrefix('> '); break;
+      case 'divider': insertBlock('---'); break;
+      case 'list': replaceLinePrefix('- '); break;
+      case 'numbered': replaceLinePrefix('1. '); break;
+      case 'checklist': replaceLinePrefix('- [ ] '); break;
+      case 'code': insertBlock('```\n\n```'); break;
+      case 'table': insertBlock(`| Column 1 | Column 2 | Column 3 |\n|---|---|---|\n|  |  |  |`); break;
+      case 'link': wrapSelection('[', '](url)'); break;
+      case 'image': wrapSelection('![', '](url)'); break;
+      default:
+        // Fallback: emit event for parent or backend if needed
+        dispatch('command', { command: cmd });
+    }
+
     closeCommandBar();
+  }
+
+  // Remove the "/query" trigger then apply command transformation
+  function applyInlineCommand(cmd: string) {
+    if (!editorElement) return;
+    const pos = editorElement.selectionStart || 0;
+    const text = editingContent;
+    const lineStart = text.lastIndexOf('\n', Math.max(0, pos - 1)) + 1;
+    const slashIndex = text.lastIndexOf('/', pos - 1);
+    const validSlash = slashIndex >= lineStart;
+    let nextSel = pos;
+    if (validSlash) {
+      const before = text.slice(0, slashIndex);
+      const after = text.slice(pos);
+      const newText = before + after;
+      // Update textarea and selection: caret at slashIndex
+      editingContent = newText;
+      editorElement.value = newText;
+      editorElement.selectionStart = editorElement.selectionEnd = slashIndex;
+      nextSel = slashIndex;
+      dispatch('update', { content: editingContent });
+  renderMarkdown();
+    }
+    // Apply transformation at the updated caret
+    executeCommand(cmd);
   }
   
   // Filter suggestions as user types
   $: {
     if (commandText) {
-      filteredSuggestions = commandSuggestions.filter(s => 
-        s.cmd.toLowerCase().includes(commandText.toLowerCase()) || 
+      filteredSuggestions = commandSuggestions.filter((s: CommandSuggestion) =>
+        s.cmd.toLowerCase().includes(commandText.toLowerCase()) ||
         s.description.toLowerCase().includes(commandText.toLowerCase())
       );
     } else {
@@ -617,376 +768,164 @@
   
   // Handle clicks outside the editor
   function handleDocumentClick(event: MouseEvent) {
-    // Close command bar if it's active when clicking anywhere
-    if (commandBarActive) {
-      closeCommandBar();
+    const target = event.target as HTMLElement;
+    // Ignore clicks inside the editor textarea or command bar
+    if (target.closest('textarea') || target.closest('.command-bar')) return;
+    if (commandBarActive) closeCommandBar();
+  }
+
+  function ensureMirror() {
+    if (!mirrorElement) {
+      mirrorElement = document.createElement('div');
+      mirrorElement.className = 'mdx-caret-mirror';
+      Object.assign(mirrorElement.style, {
+        position: 'fixed',
+        top: '-9999px',
+        left: '0',
+        visibility: 'hidden',
+        whiteSpace: 'pre-wrap',
+        wordWrap: 'break-word'
+      } as CSSStyleDeclaration);
+      document.body.appendChild(mirrorElement);
+    }
+  }
+
+  function updateCaretPosition() {
+    if (!editing || !editorElement) return;
+    ensureMirror();
+    if (!mirrorElement) return;
+    const ta = editorElement;
+    const selStart = ta.selectionStart;
+    const fullText = ta.value;
+    const upto = fullText.substring(0, selStart);
+    const lines = upto.split('\n');
+    const currentLineIndex = lines.length - 1;
+    const currentLine = lines[currentLineIndex];
+    
+    // Get actual line height by checking if line starts with heading markers
+    let lineHeightMultiplier = 1.6; // base line-height from textarea
+    let fontSize = 16; // base font size
+    
+    // Check if current line is a heading
+    const trimmedLine = currentLine.trim();
+    if (trimmedLine.startsWith('# ')) {
+      fontSize = 32; // h1
+      lineHeightMultiplier = 1.2;
+    } else if (trimmedLine.startsWith('## ')) {
+      fontSize = 24; // h2
+      lineHeightMultiplier = 1.3;
+    } else if (trimmedLine.startsWith('### ')) {
+      fontSize = 20; // h3
+      lineHeightMultiplier = 1.4;
     }
     
-    if (editing && editorElement) {
-      // Check if click is outside the editor
-      const container = editorElement.closest('.markdown-container');
-      const commandBar = document.querySelector('.command-bar');
-      const textarea = editorElement;
-      
-      // If we clicked inside container but outside textarea, exit editing mode
-      if (container && container.contains(event.target as Node) && 
-          !textarea.contains(event.target as Node) && 
-          (!commandBar || !commandBar.contains(event.target as Node))) {
-        
-        event.preventDefault();
-        event.stopPropagation();
-        
-        // Save content and exit edit mode
-        content = editingContent;
-        editing = false;
-        
-        // Force preview to update with latest content
-        renderMarkdown();
-        
-        // Notify parent
-        dispatch('update', { content });
+    const lineHeight = fontSize * lineHeightMultiplier;
+    
+    // Use mirror element for width calculation
+    const style = window.getComputedStyle(ta);
+    const padLeft = parseFloat(style.paddingLeft) || 32;
+    const padTop = parseFloat(style.paddingTop) || 32;
+    
+    mirrorElement.style.width = ta.clientWidth + 'px';
+    mirrorElement.style.fontSize = fontSize + 'px';
+    ['font-family','font-weight','font-style','letter-spacing','text-transform','padding','border','box-sizing','tab-size'].forEach(p => {
+      const v = style.getPropertyValue(p);
+      if (v) mirrorElement!.style.setProperty(p, v);
+    });
+    
+    // Measure width to cursor on current line
+    const textUpToCursor = currentLine.replace(/^#{1,6}\s+/, ''); // Remove heading markers for width calc
+    const escaped = (textUpToCursor || '\u200b').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/ /g,'&nbsp;');
+    mirrorElement.innerHTML = `<span>${escaped}</span>`;
+    const span = mirrorElement.querySelector('span');
+    const spanRect = span ? span.getBoundingClientRect() : mirrorElement.getBoundingClientRect();
+    
+    const taRect = ta.getBoundingClientRect();
+    const scrollLeft = ta.scrollLeft;
+    const scrollTop = ta.scrollTop;
+    
+    // Calculate cumulative height of all previous lines more accurately
+    let yOffset = 0;
+    for (let i = 0; i < currentLineIndex; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('# ')) {
+        yOffset += 32 * 1.2; // h1 line height
+      } else if (line.startsWith('## ')) {
+        yOffset += 24 * 1.3; // h2 line height
+      } else if (line.startsWith('### ')) {
+        yOffset += 20 * 1.4; // h3 line height
+      } else {
+        yOffset += 16 * 1.6; // regular line height
       }
     }
+    
+    // Calculate exact position without offset adjustments
+    const x = spanRect.width - scrollLeft + padLeft + taRect.left;
+    const y = yOffset - scrollTop + padTop + taRect.top;
+    
+    // Store caret height based on current line's font size (full line height)
+    const caretHeight = lineHeight;
+    caretPosition = { x, y, height: caretHeight };
   }
 </script>
 
-<div class="markdown-container">
-  {#if editing}
-    <!-- Seamless Editor Mode -->
-    <textarea 
+<style>
+  .custom-caret {
+    position: fixed;
+    width: 2.5px;
+    /* height is set dynamically via inline style based on current line */
+    background: rgba(255, 255, 255, 0.95);
+    pointer-events: none;
+    animation: caret-blink 1.0s steps(2, start) infinite;
+    z-index: 60;
+    border-radius: 0.5px;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+  }
+  @keyframes caret-blink { 
+    50% { opacity: 0; } 
+  }
+</style>
+
+<div class="flex flex-col h-full w-full min-h-0 flex-1 bg-black markdown-container relative">
+  <!-- Single editor view with live preview rendering -->
+  <div class="flex-1 min-h-0 h-full flex flex-col relative">
+  <textarea
       bind:this={editorElement}
-      class="markdown-editor"
+    class="flex-1 w-full h-full min-h-0 max-w-none p-8 text-base leading-relaxed text-gray-200 selection:bg-white/20 bg-transparent resize-none outline-none caret-transparent font-sans relative z-10 mdx-editor"
+      class:mdx-hidden-text={editing}
       bind:value={editingContent}
-      on:input={(event) => {
-        handleEditorInput(event);
-      }}
+      on:input={handleEditorInput}
       on:keydown={handleKeydown}
-      placeholder="Type / for commands or just start writing..."
+      on:scroll={(e) => {
+        // Keep preview scroll in sync with textarea
+        const t = e.target;
+        if (previewElement && t) {
+          // @ts-ignore - DOM typing in template context
+          previewElement.scrollTop = t.scrollTop;
+          // @ts-ignore
+          previewElement.scrollLeft = t.scrollLeft;
+        }
+      }}
+      placeholder="Start typing... Use # for headings, **bold**, *italic*, `code`"
       spellcheck="false"
       tabindex="0"
     ></textarea>
-  {:else}
-    <!-- Preview Mode - clickable and directly editable -->
-    <div 
-      class="markdown-preview" 
-      bind:this={markdownElement}
-      on:click|stopPropagation={handlePreviewClick}
-    >
-      {#if loading}
-        <div class="loading">Loading renderer...</div>
-      {:else}
+    
+    <!-- Live preview overlay (subtle, under text) -->
+  <div bind:this={previewElement} class="absolute inset-0 p-8 overflow-auto text-gray-300 mdx-preview-layer pointer-events-none">
+      <div class="prose prose-invert max-w-none mdx-preview" class:mdx-live={editing}>
         {@html renderedContent}
-      {/if}
+      </div>
     </div>
+    <!-- Custom caret with dynamic height -->
+    {#if editing}
+      <div class="custom-caret" style="transform: translate({caretPosition.x}px, {caretPosition.y}px); height: {caretPosition.height || 20}px;"></div>
+    {/if}
+  </div>
+
+  <!-- Command bar disabled - using global CommandBar component instead -->
+  {#if false}
+    <div style="display: none;"></div>
   {/if}
 </div>
 
-{#if commandBarActive}
-  <div 
-    class="command-bar"
-    style="left: {commandBarPosition.x}px; top: {commandBarPosition.y}px;"
-    in:fly={{ y: -10, duration: 150 }}
-  >
-    <input 
-      type="text"
-      class="command-input" 
-      bind:this={commandBarInput}
-      bind:value={commandText} 
-      on:input={handleCommandInput}
-      on:keydown={(e) => {
-        // Stop propagation for all keys to prevent double handling
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          closeCommandBar();
-        } else if (e.key === 'Enter') {
-          e.preventDefault();
-          executeCommand(commandText);
-          // Close command bar after command execution
-          closeCommandBar();
-        }
-      }}
-      placeholder="Type a command..." 
-    />
-    {#if filteredSuggestions.length > 0}
-      <div class="command-suggestions">
-        {#each filteredSuggestions as suggestion}
-          <div 
-            class="command-suggestion" 
-            on:click={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleSuggestionClick(suggestion.cmd);
-              // Close command bar after selecting a suggestion
-              closeCommandBar();
-            }}
-          >
-            <div class="suggestion-icon">{suggestion.icon}</div>
-            <div class="suggestion-content">
-              <span class="command">{suggestion.cmd}</span>
-              <span class="description">{suggestion.description}</span>
-            </div>
-          </div>
-        {/each}
-      </div>
-    {/if}
-  </div>
-{/if}
-
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600;700&display=swap');
-  
-  .markdown-container {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    background-color: #000;
-    align-items: center; /* Center horizontally */
-    width: 100%;
-    position: relative;
-  }
-  
-  .markdown-editor {
-    flex: 1;
-    padding: 2rem;
-    line-height: 1.6;
-    color: #e1e4e8;
-    background-color: #000;
-    border: none;
-    outline: none;
-    resize: none;
-    font-family: 'Onest', sans-serif;
-    font-size: 16px;
-    white-space: pre-wrap;
-    overflow: auto;
-    width: 80%;
-    max-width: 900px;
-    margin: 0 auto;
-    caret-color: #646cff; /* Colored cursor */
-    min-height: 300px;
-    display: block;
-    cursor: text;
-    z-index: 10;
-    position: relative;
-    box-sizing: border-box;
-  }
-  
-  .markdown-editor:focus {
-    outline: none;
-    border: none;
-    caret-color: #646cff; /* Ensure cursor is visible when focused */
-  }
-  
-  .markdown-preview {
-    flex: 1;
-    padding: 2rem;
-    line-height: 1.6;
-    color: #e1e4e8;
-    overflow: auto;
-    font-family: 'Onest', sans-serif;
-    width: 80%;
-    max-width: 900px;
-    margin: 0 auto;
-    background-color: #000;
-    cursor: text; /* Show text cursor on hover to indicate editability */
-    min-height: 300px;
-  }
-
-  .markdown-preview:hover {
-    background-color: #0a0a0a; /* Subtle highlight on hover */
-  }
-  
-  .loading {
-    color: #8b949e;
-    padding: 1rem;
-    font-style: italic;
-    font-family: 'Onest', sans-serif;
-  }
-  
-  /* Command bar styling */
-  .command-bar {
-    position: absolute;
-    z-index: 1000;
-    background-color: #161b22;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-    width: 300px;
-    font-family: 'Onest', sans-serif;
-    overflow: hidden;
-  }
-  
-  .command-input {
-    width: 100%;
-    padding: 12px 16px;
-    background-color: #0d1117;
-    color: #c9d1d9;
-    border: none;
-    outline: none;
-    font-size: 14px;
-    border-bottom: 1px solid #30363d;
-  }
-  
-  .command-suggestions {
-    max-height: 320px;
-    overflow-y: auto;
-  }
-  
-  .command-suggestion {
-    padding: 8px 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    transition: background-color 0.15s ease;
-  }
-  
-  .command-suggestion:hover {
-    background-color: #1f2937;
-  }
-  
-  .suggestion-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    margin-right: 12px;
-    background-color: #21262d;
-    border-radius: 4px;
-    font-size: 14px;
-    color: #8b949e;
-  }
-  
-  .suggestion-content {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-  }
-  
-  .command {
-    font-weight: 500;
-    color: #e1e4e8;
-    font-size: 14px;
-    margin-bottom: 2px;
-  }
-  
-  .description {
-    font-size: 12px;
-    color: #8b949e;
-  }
-  
-  /* Special styling for editing elements */
-  .editing-heading-1 {
-    font-size: 24px;
-    font-weight: bold;
-    color: #fff;
-  }
-  
-  .editing-bold {
-    font-weight: bold;
-  }
-  
-  .editing-italic {
-    font-style: italic;
-  }
-  
-  .editing-code {
-    font-family: 'JetBrains Mono', monospace;
-    background-color: rgba(110, 118, 129, 0.2);
-    padding: 2px 4px;
-    border-radius: 3px;
-  }
-  
-  /* Styling for rendered markdown */
-  :global(.markdown-preview h1) {
-    font-size: 2em;
-    margin-top: 0.67em;
-    margin-bottom: 0.67em;
-    font-weight: 600;
-    color: #fff;
-  }
-  
-  :global(.markdown-preview h2) {
-    font-size: 1.5em;
-    margin-top: 0.83em;
-    margin-bottom: 0.83em;
-    font-weight: 600;
-    color: #fff;
-  }
-  
-  :global(.markdown-preview h3) {
-    font-size: 1.17em;
-    margin-top: 1em;
-    margin-bottom: 1em;
-    font-weight: 600;
-    color: #fff;
-  }
-  
-  :global(.markdown-preview p) {
-    margin-top: 1em;
-    margin-bottom: 1em;
-  }
-  
-  :global(.markdown-preview ul),
-  :global(.markdown-preview ol) {
-    margin-top: 1em;
-    margin-bottom: 1em;
-    padding-left: 2em;
-  }
-  
-  :global(.markdown-preview li) {
-    margin: 0.5em 0;
-  }
-  
-  :global(.markdown-preview code) {
-    font-family: 'JetBrains Mono', monospace;
-    background-color: #000;
-    padding: 0.2em 0.4em;
-    border-radius: 3px;
-    font-size: 85%;
-    border: 1px solid #333;
-  }
-  
-  :global(.markdown-preview pre) {
-    background-color: #000;
-    border-radius: 6px;
-    padding: 16px;
-    overflow: auto;
-    font-family: 'JetBrains Mono', monospace;
-    margin: 1em 0;
-    border: 1px solid #333;
-  }
-  
-  :global(.markdown-preview pre code) {
-    background-color: transparent;
-    padding: 0;
-    border-radius: 0;
-    font-size: 100%;
-    color: #e1e4e8;
-  }
-  
-  :global(.markdown-preview blockquote) {
-    padding: 0 1em;
-    color: #8b949e;
-    border-left: 3px solid #30363d;
-    margin: 1em 0;
-  }
-  
-  :global(.markdown-preview table) {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 1em 0;
-  }
-  
-  :global(.markdown-preview th),
-  :global(.markdown-preview td) {
-    padding: 8px;
-    border: 1px solid #30363d;
-    text-align: left;
-  }
-  
-  :global(.markdown-preview th) {
-    background-color: #161b22;
-  }
-</style> 

@@ -7,12 +7,14 @@ use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager};
 use global_hotkey::hotkey::HotKey;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use crate::key_manager::KeyManager;
 
 /// Store for managing global hotkeys
 #[derive(Clone)]
 pub struct HotkeyManager {
     hotkeys: Arc<Mutex<HashMap<String, HotKey>>>,
-    manager: Arc<Mutex<GlobalHotKeyManager>>,
+    manager: Arc<Mutex<Option<GlobalHotKeyManager>>>,
+    commands: Arc<Mutex<HashMap<String, String>>>, // id -> action/command
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -24,14 +26,11 @@ pub struct HotkeyConfig {
 
 impl HotkeyManager {
     pub fn new() -> Self {
-        let manager = GlobalHotKeyManager::new().unwrap_or_else(|e| {
-            eprintln!("Failed to initialize global hotkey manager: {}", e);
-            panic!("Could not initialize hotkey manager");
-        });
-        
+        let manager = GlobalHotKeyManager::new().ok();
         HotkeyManager {
             hotkeys: Arc::new(Mutex::new(HashMap::new())),
             manager: Arc::new(Mutex::new(manager)),
+            commands: Arc::new(Mutex::new(HashMap::new())),
         }
     }
     
@@ -48,14 +47,21 @@ impl HotkeyManager {
         };
         
         let mut manager = self.manager.lock().unwrap();
-        if let Err(e) = manager.register(hotkey) {
-            return Err(format!("Failed to register hotkey: {}", e));
+        if let Some(mgr) = manager.as_mut() {
+            if let Err(e) = mgr.register(hotkey) {
+                return Err(format!("Failed to register hotkey: {}", e));
+            }
+        } else {
+            // Manager unavailable (e.g., missing accessibility permissions); proceed without OS-level registration
         }
         
         // Store the hotkey
         let mut hotkeys = self.hotkeys.lock().unwrap();
         hotkeys.insert(id.clone(), hotkey);
-        
+    // Store id -> command mapping
+    let mut commands = self.commands.lock().unwrap();
+    commands.insert(id.clone(), command.clone());
+
         // Store the configuration
         let config = HotkeyConfig {
             id: id.clone(),
@@ -76,9 +82,14 @@ impl HotkeyManager {
         
         if let Some(hotkey) = hotkeys.remove(&id) {
             let mut manager = self.manager.lock().unwrap();
-            if let Err(e) = manager.unregister(hotkey) {
-                return Err(format!("Failed to unregister hotkey: {}", e));
+            if let Some(mgr) = manager.as_mut() {
+                if let Err(e) = mgr.unregister(hotkey) {
+                    return Err(format!("Failed to unregister hotkey: {}", e));
+                }
             }
+            // Remove command mapping
+            let mut commands = self.commands.lock().unwrap();
+            commands.remove(&id);
             
             // Emit an event to confirm unregistration
             if let Err(e) = app_handle.emit_all("hotkey-unregistered", id) {
@@ -99,20 +110,26 @@ impl HotkeyManager {
     /// Set up the global hotkey event listener
     pub fn setup_event_listener(&self, app_handle: AppHandle) {
         let app_handle_clone = app_handle.clone();
-        
+        let commands_arc = self.commands.clone();
+
         // Clone the Arc<Mutex<HashMap>> to avoid capturing self in the closure
         let hotkeys_arc = self.hotkeys.clone();
         
         // Listen for global hotkey events
-        GlobalHotKeyEvent::set_event_handler(Some(move |event: GlobalHotKeyEvent| {
+    GlobalHotKeyEvent::set_event_handler(Some(move |event: GlobalHotKeyEvent| {
             let hotkeys = hotkeys_arc.lock().unwrap();
             
             // Find which hotkey was triggered
             for (id, hotkey) in hotkeys.iter() {
                 if event.id == hotkey.id() {
-                    // Emit an event to the frontend with the hotkey ID
-                    if let Err(e) = app_handle_clone.emit_all("hotkey-triggered", id) {
-                        eprintln!("Failed to emit hotkey-triggered event: {}", e);
+                    // Look up mapped command/action and emit key_action directly
+                    if let Some(cmd) = commands_arc.lock().unwrap().get(id).cloned() {
+                        let _ = app_handle_clone.emit_all("key_action", serde_json::json!({
+                            "action": cmd
+                        }));
+                    } else {
+                        // Fallback: emit legacy event with id
+                        let _ = app_handle_clone.emit_all("hotkey-triggered", id);
                     }
                     break;
                 }

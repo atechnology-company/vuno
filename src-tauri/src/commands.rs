@@ -1,6 +1,29 @@
 use std::process::Stdio;
 use tokio::process::Command as TokioCommand;
 use tokio::io::{AsyncBufReadExt, BufReader};
+use tauri::Manager;
+use serde_json;
+
+#[tauri::command]
+pub async fn set_ui_state(app_handle: tauri::AppHandle, state: String, value: bool) -> Result<(), String> {
+    // Emit state change to frontend
+    let _ = app_handle.emit_all("ui_state_change", serde_json::json!({
+        "state": state,
+        "value": value,
+        "timestamp": chrono::Utc::now().timestamp_millis()
+    }));
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn close_command_bar(app_handle: tauri::AppHandle) -> Result<(), String> {
+    // Force close command bar with multiple state updates for reliability
+    let _ = app_handle.emit_all("force_close_command_bar", serde_json::json!({
+        "action": "close",
+        "timestamp": chrono::Utc::now().timestamp_millis()
+    }));
+    Ok(())
+}
 
 #[tauri::command]
 pub async fn execute_command(command: String) -> Result<String, String> {

@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:;">
   <link rel="icon" href="/favicon.png" type="image/png">
   <title>vuno</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Onest:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Using local fonts from /static/fonts via @font-face in global.css -->
   
   <!-- Preload shiki assets -->
   <link rel="preload" href="/dist/onig.wasm" as="fetch" crossorigin>
@@ -23,9 +21,9 @@
     html, body {
       margin: 0;
       padding: 0;
-      background-color: #1e1e1e;
-      color: #eee;
-      font-family: 'JetBrains Mono', monospace;
+      background-color: #000000;
+      color: #ffffff;
+      font-family: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
       height: 100%;
       width: 100%;
       overflow: hidden;

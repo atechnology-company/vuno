@@ -183,6 +183,7 @@ export default defineConfig({
             }
             if (id.includes('@codemirror')) return 'vendor-codemirror';
             if (id.includes('@tauri')) return 'vendor-tauri';
+            if (id.includes('marked') || id.includes('shiki')) return 'vendor-markdown';
             return 'vendor'; // Other third-party code
           }
         }

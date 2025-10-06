@@ -34,6 +34,7 @@ export interface AppState {
   isSaving: boolean;
   saveFilename: string;
   commandBarTitle: string;
+  commandBarPlaceholder: string;
   isAiLoading: boolean;
   isOnline: boolean;
   commandExecutionInProgress: boolean;
@@ -82,6 +83,7 @@ const initialState: AppState = {
   isSaving: false,
   saveFilename: '',
   commandBarTitle: 'What would you like to do today?',
+  commandBarPlaceholder: 'Type a command or press Enter',
   isAiLoading: false,
   isOnline: navigator.onLine,
   commandExecutionInProgress: false,

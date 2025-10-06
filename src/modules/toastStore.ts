@@ -14,18 +14,10 @@ export interface ToastItem {
 export const toasts = writable<ToastItem[]>([]);
 
 // Toast management functions
-export function addToast(message: string, type: ToastType = 'info', duration: number = 3000) {
-  const id = Date.now().toString();
-  const toast = { id, message, type, duration };
-  
-  toasts.update(items => [...items, toast]);
-  
-  // Automatically remove toast after duration
-  setTimeout(() => {
-    removeToast(id);
-  }, duration);
-  
-  return id;
+export function addToast(_message: string, _type: ToastType = 'info', _duration: number = 3000) {
+  // Toasts disabled: do nothing and ensure store stays empty.
+  clearToasts();
+  return '';
 }
 
 export function removeToast(id: string) {
@@ -35,3 +27,18 @@ export function removeToast(id: string) {
 export function clearToasts() {
   toasts.set([]);
 } 
+
+// Optional: close all toasts convenience
+export function closeAllToasts() {
+  toasts.update(items => []);
+}
+
+// Attach a single global ESC handler (idempotent) to guarantee toast closure even if component unmounted temporarily
+if (typeof window !== 'undefined' && !(window as any).__vunoToastEsc) {
+  (window as any).__vunoToastEsc = true;
+  window.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      toasts.update(items => items.slice(0, -1)); // pop last
+    }
+  }, true);
+}

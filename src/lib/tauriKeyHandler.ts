@@ -2,7 +2,7 @@ import { appState } from '../stores/appState';
 import { get } from 'svelte/store';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrent } from '@tauri-apps/api/window';
-import { register, unregisterAll } from '@tauri-apps/api/globalShortcut';
+import { invoke } from '@tauri-apps/api/tauri';
 
 // This class will use DOM level event listeners for key handling
 export class TauriKeyHandler {
@@ -10,6 +10,8 @@ export class TauriKeyHandler {
   private commandBarInput: HTMLInputElement | null = null;
   private isInitialized: boolean = false;
   private unlistenHandlers: Array<(() => void) | undefined> = [];
+  private hasAccessibilityPermissions: boolean = false;
+  private domKeydownHandler?: (e: KeyboardEvent) => void;
   
   private constructor() {}
   
@@ -24,6 +26,15 @@ export class TauriKeyHandler {
     if (this.isInitialized) return;
     
     try {
+      // Check if we have accessibility permissions on macOS
+      try {
+        this.hasAccessibilityPermissions = await invoke('check_accessibility_permissions');
+        console.log('Accessibility permissions:', this.hasAccessibilityPermissions);
+      } catch (error) {
+        console.warn('Could not check accessibility permissions:', error);
+        this.hasAccessibilityPermissions = false;
+      }
+      
       // Listen for window close event
       const tauriWindow = await getCurrent();
       const unlisten = await listen('window-will-close', () => {
@@ -33,16 +44,50 @@ export class TauriKeyHandler {
       
       this.unlistenHandlers.push(unlisten);
       
-      // Listen for hotkey events from Rust backend
-      const hotkeyUnlisten = await listen('hotkey-triggered', (event: any) => {
-        const hotkeyId = event.payload as string;
-        this.handleHotkeyTriggered(hotkeyId);
+      // Listen for key events from Rust backend
+      const keyEventUnlisten = await listen('key_event', (event: any) => {
+        this.handleKeyEvent(event.payload);
       });
       
-      this.unlistenHandlers.push(hotkeyUnlisten);
+      this.unlistenHandlers.push(keyEventUnlisten);
       
-      console.log('TauriKeyHandler initialized with Rust-based hotkey system');
+      // Listen for key action events from Rust backend
+      const keyActionUnlisten = await listen('key_action', (event: any) => {
+        this.handleKeyAction(event.payload);
+      });
+      
+      this.unlistenHandlers.push(keyActionUnlisten);
+      
+      // Listen for key monitoring errors
+      const errorUnlisten = await listen('key_monitoring_error', (event: any) => {
+        console.warn('Key monitoring error:', event.payload);
+        this.handleKeyMonitoringError(event.payload);
+      });
+      
+      this.unlistenHandlers.push(errorUnlisten);
+      
+      // Listen for key monitoring mode changes
+      const modeUnlisten = await listen('key_monitoring_mode', (event: any) => {
+        console.log('Key monitoring mode:', event.payload);
+        this.handleKeyMonitoringMode(event.payload);
+      });
+      
+      this.unlistenHandlers.push(modeUnlisten);
+      
+  console.log('TauriKeyHandler initialized (Tauri events only, no DOM fallback)');
       this.isInitialized = true;
+
+      // Add a minimal, window-scoped DOM listener for Escape to support ESC-to-open/close
+      // We do NOT register global ESC at the OS level for safety.
+      if (typeof document !== 'undefined') {
+        this.domKeydownHandler = (e: KeyboardEvent) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            this.handleEscape();
+          }
+        };
+        document.addEventListener('keydown', this.domKeydownHandler, { capture: true });
+      }
     } catch (error) {
       console.error('Failed to initialize TauriKeyHandler:', error);
       this.isInitialized = false;
@@ -50,94 +95,105 @@ export class TauriKeyHandler {
     }
   }
   
-  private async registerGlobalShortcuts() {
-    try {
-      // Register Command+K / Ctrl+K for command bar
-      await register('CommandOrControl+K', () => {
-        console.log('Global shortcut triggered: CommandOrControl+K');
-        this.toggleCommandBar();
-      });
-      
-      // Register F1 for help
-      await register('F1', () => {
-        console.log('Global shortcut triggered: F1');
-        const state = get(appState);
-        if (state.showHelp) {
-          // If help is already open, close it
-          appState.update(s => ({ ...s, showHelp: false }));
-          console.log('Closing help window with F1 global shortcut');
-        } else {
-          // Otherwise toggle it
-          this.toggleHelp();
-          console.log('Opening help window with F1 global shortcut');
-        }
-      });
-      
-      // Register Escape for closing menus
-      await register('Escape', () => {
-        console.log('Global shortcut triggered: Escape');
-        const state = get(appState);
-        if (state.showHelp) {
-          // Force close help window if it's open
-          appState.update(s => ({ ...s, showHelp: false }));
-          console.log('Force closing help window with Escape global shortcut');
-        } else {
-          this.handleEscape();
-        }
-      });
-      
-      console.log('Global shortcuts registered successfully');
-    } catch (error) {
-      console.error('Failed to register global shortcuts:', error);
-      // Don't re-throw the error, just return false to indicate failure
-      // This allows the initialize method to continue with fallback DOM handlers
-      return false;
-    }
-    return true;
+  private handleKeyEvent(event: any) {
+    // Handle raw key events from Rust
+    console.log('Key event:', event);
   }
   
-  private handleHotkeyTriggered = (hotkeyId: string) => {
-    console.log(`Executing hotkey command for ID: ${hotkeyId}`);
+  private handleKeyAction(event: any) {
+    // Handle key action events from Rust
+    const action = event.action;
+    console.log('Key action:', action);
     
-    // Get the current app state
-    const state = get(appState);
-    
-    switch (hotkeyId) {
-      case 'command-bar':
+    switch (action) {
+      case 'toggle_command_bar':
         this.toggleCommandBar();
         break;
-      case 'help':
-        if (state.showHelp) {
-          appState.update(s => ({ ...s, showHelp: false }));
-        } else {
-          this.toggleHelp();
-        }
+      case 'toggle_help':
+        this.toggleHelp();
         break;
       case 'escape':
-        if (state.showHelp) {
-          appState.update(s => ({ ...s, showHelp: false }));
-        } else if (state.commandMode) {
-          this.handleEscape();
-        }
+        this.handleEscape();
         break;
-      case 'enter':
-        if (state.commandMode && state.commandText) {
-          this.handleEnter();
-        }
+      case 'save_file':
+        this.handleSaveFile();
+        break;
+      case 'new_file':
+        this.handleNewFile();
+        break;
+      case 'open_file':
+        this.handleOpenFile();
         break;
     }
+  }
+  
+  private handleKeyMonitoringError(error: any) {
+    console.warn('Key monitoring error:', error);
+    if (error.error === 'accessibility_permission_required') {
+      // Show user notification about accessibility permissions
+      const event = new CustomEvent('accessibility-permission-required', {
+        detail: error,
+        bubbles: true
+      });
+      document.body.dispatchEvent(event);
+    }
+  }
+  
+  private handleKeyMonitoringMode(mode: any) {
+    console.log('Key monitoring mode changed:', mode);
+    // Notify user about the mode change
+    const event = new CustomEvent('key-monitoring-mode-changed', {
+      detail: mode,
+      bubbles: true
+    });
+    document.body.dispatchEvent(event);
+  }
+
+  private async registerGlobalShortcuts() {
+    // This method is no longer used, but kept for compatibility
+    console.log('Global shortcuts registration skipped - using Rust-based key handling');
+    return true;
+  }
+
+  private handleHotkeyTriggered = (hotkeyId: string) => {
+    // Legacy method - redirect to handleKeyAction
+    this.handleKeyAction({ action: hotkeyId.replace('-', '_') });
+  }
+  
+  private handleSaveFile() {
+    const event = new CustomEvent('save-file', { bubbles: true });
+    document.body.dispatchEvent(event);
+  }
+  
+  private handleNewFile() {
+    const event = new CustomEvent('new-file', { bubbles: true });
+    document.body.dispatchEvent(event);
+  }
+  
+  private handleOpenFile() {
+    const event = new CustomEvent('open-file', { bubbles: true });
+    document.body.dispatchEvent(event);
   }
   
   private toggleCommandBar() {
     const state = get(appState);
-    console.log('Toggling command bar, current state:', state.commandMode);
-    appState.update(s => ({ ...s, commandMode: !s.commandMode }));
-    
-    if (!state.commandMode && this.commandBarInput) {
-      setTimeout(() => {
-        this.commandBarInput?.focus();
-        console.log('Focused command bar input');
-      }, 50);
+    const nextMode = !state.commandMode;
+    console.log('Toggling command bar, next state:', nextMode);
+    appState.update(s => ({ ...s, commandMode: nextMode, showTutorial: false }));
+
+    if (nextMode) {
+      const el = this.commandBarInput;
+      const isConnected = !!(el && typeof el === 'object' && 'isConnected' in el ? (el as any).isConnected : document.contains(el as any));
+      if (el && isConnected) {
+        setTimeout(() => {
+          try { el.focus(); } catch {}
+          console.log('Focused command bar input');
+        }, 50);
+      } else {
+        // Ask parent to focus/create the input if we don't have a valid ref
+        const focusEvent = new CustomEvent('command-input-focus-requested', { bubbles: true });
+        document.body.dispatchEvent(focusEvent);
+      }
     }
   }
   
@@ -150,6 +206,11 @@ export class TauriKeyHandler {
   private handleEscape() {
     const state = get(appState);
     console.log('Handling escape key');
+    // Always allow ESC to close any toasts first
+    try {
+      const evt = new CustomEvent('toast-close-all', { bubbles: true });
+      document.body.dispatchEvent(evt);
+    } catch {}
     
     if (state.showHelp) {
       console.log('Closing help window with Escape key');
@@ -163,6 +224,17 @@ export class TauriKeyHandler {
       console.log('Closing command bar with Escape key');
       appState.update(s => ({ ...s, commandMode: false }));
       this.focusEditor();
+      return;
+    } else if (state.showTutorial) {
+      console.log('Closing tutorial with Escape key');
+      appState.update(s => ({ ...s, showTutorial: false }));
+      this.focusEditor();
+      return;
+    } else {
+      // Nothing is open; ESC should OPEN the command bar
+      console.log('Opening command bar with Escape key');
+      // Use the same toggle path to ensure focus flows correctly
+      this.toggleCommandBar();
     }
   }
   
@@ -205,29 +277,23 @@ export class TauriKeyHandler {
   }
   
   private handleEnter() {
-    const state = get(appState);
-    console.log('Handling enter key in command mode');
-    
-    if (state.commandMode && state.commandText) {
-      const event = new CustomEvent('command', {
-        detail: { command: state.commandText },
-        bubbles: true
-      });
-      document.body.dispatchEvent(event);
-      appState.update(s => ({ ...s, commandMode: false, commandText: '' }));
-    }
+  // Enter is handled by the CommandBar component input; no-op here
   }
   
   public async cleanup() {
     // Remove all Tauri event listeners
     this.unlistenHandlers.forEach(unlisten => unlisten && unlisten());
     this.unlistenHandlers = [];
+    if (this.domKeydownHandler && typeof document !== 'undefined') {
+      document.removeEventListener('keydown', this.domKeydownHandler, { capture: true } as any);
+      this.domKeydownHandler = undefined;
+    }
     
     this.isInitialized = false;
     console.log('TauriKeyHandler cleaned up');
   }
   
-  public setCommandBarInput(element: HTMLInputElement) {
+  public setCommandBarInput(element: HTMLInputElement | null) {
     this.commandBarInput = element;
   }
 }

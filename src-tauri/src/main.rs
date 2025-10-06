@@ -15,10 +15,13 @@ mod config;
 mod window;
 mod commands;
 mod hotkeys;
+mod key_manager;
+mod command_processor;
 
 use buffer::BufferManager;
 use api::ApiKeyStore;
 use config::FirstRunStore;
+use key_manager::KeyManager;
 
 // Store CLI args for later use
 struct CliArgs {
@@ -58,6 +61,9 @@ fn main() {
     // Initialize hotkey manager
     let hotkey_manager = hotkeys::HotkeyManager::new();
     
+    // Initialize key manager
+    let key_manager = KeyManager::new();
+    
     // Get command line arguments
     let args: Vec<String> = env::args().collect();
     let file_to_open = if args.len() > 1 {
@@ -76,6 +82,7 @@ fn main() {
         .manage(init_app_state())
         .manage(cli_args)
         .manage(hotkey_manager.clone())
+        .manage(key_manager.clone())
         .setup(move |app| {
             // Create API key store
             let api_key_store = ApiKeyStore::new(&app.handle());
@@ -91,6 +98,14 @@ fn main() {
             // Set up hotkey event listener
             let hotkey_manager = app.state::<hotkeys::HotkeyManager>();
             hotkey_manager.setup_event_listener(app.app_handle());
+            
+            // Set up key manager
+            let key_manager = app.state::<KeyManager>();
+            key_manager.set_app_handle(app.app_handle());
+            key_manager.register_default_bindings();
+            
+            // Use fallback monitoring to avoid accessibility permission issues
+            key_manager.start_monitoring_with_fallback();
             
             // If we have a file to open from CLI args, emit event to frontend
             if let Some(file_path) = &file_to_open {
@@ -112,9 +127,19 @@ fn main() {
             
             // Buffer commands
             buffer::open_file,
+            buffer::create_new_buffer,
             buffer::get_content,
+            buffer::get_buffer_info,
+            buffer::list_buffers,
             buffer::apply_edit,
+            buffer::update_cursor_position,
+            buffer::update_scroll_position,
+            buffer::search_in_buffer,
+            buffer::replace_in_buffer,
+            buffer::get_edit_history,
             buffer::save_file,
+            buffer::update_buffer_content_command,
+            buffer::close_buffer,
             buffer::delete_file,
             
             // API commands
@@ -131,17 +156,43 @@ fn main() {
             window::minimize_window,
             window::maximize_window,
             window::close_window,
+            window::start_drag,
+            window::toggle_fullscreen,
             
             // CLI args command
             get_cli_args,
             
             // Command execution
             commands::execute_command,
+            command_processor::execute_enhanced_command,
+            command_processor::get_enhanced_command_suggestions,
+            command_processor::validate_command,
             
             // Hotkey commands
             hotkeys::register_hotkey,
             hotkeys::unregister_hotkey,
             hotkeys::list_hotkeys,
+            
+            // Key manager commands
+            key_manager::register_key_binding,
+            key_manager::unregister_key_binding,
+            key_manager::get_key_bindings,
+            key_manager::start_key_monitoring,
+            key_manager::stop_key_monitoring,
+            key_manager::check_accessibility_permissions,
+            key_manager::start_key_monitoring_with_fallback,
+            
+            // UI State Management
+            commands::set_ui_state,
+            commands::close_command_bar,
+            
+            // Window controls
+            window::minimize_window,
+            window::maximize_window,
+            window::close_window,
+            window::start_drag,
+            window::toggle_fullscreen,
+            window::move_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

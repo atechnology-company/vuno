@@ -1,5 +1,14 @@
 /* Global CSS styles for Vuno Editor */
 
+/* Tailwind v4 import – includes base, components, and utilities */
+@import "tailwindcss";
+
+/* Map Tailwind font-sans and font-mono to local fonts */
+:root {
+  --font-sans: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
 /* Base reset */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -10,52 +19,137 @@ body, h1, h2, h3, h4, h5, h6, p, ul, ol, li, figure, figcaption, blockquote, dl,
   padding: 0;
 }
 
-/* Import fonts */
+/* Import local fonts (served from /static/fonts) */
 @font-face {
   font-family: 'Onest';
-  src: url('../fonts/Onest-VariableFont_wght.ttf') format('truetype');
-  font-weight: 300 700;
+  src: url('/fonts/Onest-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('../fonts/JetBrainsMono-VariableFont_wght.ttf') format('truetype');
-  font-weight: 400 700;
+  src: url('/fonts/JetBrainsMono-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 800;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('../fonts/JetBrainsMono-Italic-VariableFont_wght.ttf') format('truetype');
-  font-weight: 400 700;
+  src: url('/fonts/JetBrainsMono-Italic-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 800;
   font-style: italic;
   font-display: swap;
 }
 
-/* Base styles */
+/* Base styles - Pure OLED Black theme */
 html, body {
   height: 100%;
   overflow: hidden;
-  background-color: #1e1e1e;
-  color: #e1e4e8;
-  font-family: 'JetBrains Mono', monospace;
+  background-color: #000000; /* Pure OLED black */
+  color: #ffffff; /* Pure white for maximum contrast */
+  font-family: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
   font-size: 14px;
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* App container */
 #app {
-  height: 100vh;
-  width: 100vw;
+  height: 100vh !important;
+  width: 100vw !important;
 }
 
-/* Scrollbar styling */
+/* Force full height on all main containers */
+main {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+}
+
+main > * {
+  min-height: 0 !important;
+}
+
+main > *:not(.command-overlay):not([role="banner"]) {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+/* Ensure markdown and code containers fill height */
+.markdown-container {
+  height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.markdown-container > * {
+  flex: 1 !important;
+  min-height: 0 !important;
+}
+
+/* Force textarea in markdown to fill height */
+.markdown-container textarea {
+  flex: 1 !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+/* Hide native caret in markdown completely - multiple methods */
+.mdx-editor {
+  caret-color: transparent !important;
+}
+
+textarea.caret-transparent {
+  caret-color: transparent !important;
+}
+
+.mdx-editor:focus {
+  caret-color: transparent !important;
+}
+
+textarea.mdx-editor:focus {
+  caret-color: transparent !important;
+}
+
+/* Hide caret in all states */
+textarea.caret-transparent:focus,
+textarea.caret-transparent:active,
+textarea.caret-transparent:focus-visible {
+  caret-color: transparent !important;
+}
+
+.mdx-editor::selection {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Force caret to be invisible with color and size */
+textarea.mdx-editor::-webkit-textfield-decoration-container {
+  caret-color: transparent !important;
+}
+
+/* Nuclear option: hide all textarea carets globally in markdown mode */
+textarea[class*="mdx-"] {
+  caret-color: transparent !important;
+}
+
+/* Ensure CodeMirror fills height */
+.cm-editor {
+  flex: 1 !important;
+  min-height: 0 !important;
+}
+
+/* Scrollbar styling - Minimal OLED theme */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   background: transparent;
 }
 
@@ -64,15 +158,15 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.7);
-  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid transparent;
   background-clip: padding-box;
 }
 
@@ -345,9 +439,80 @@ pre code {
 /* Make the editable content in CodeMirror non-editable in AI responses */
 .ai-code-block .cm-content[contenteditable="true"] {
   -webkit-user-modify: read-only !important;
-  user-modify: read-only !important;
   pointer-events: none !important;
 }
+
+/* Ensure markdown preview elements render clearly in the dark theme */
+.markdown-container .prose {
+  color: rgba(255,255,255,0.9) !important;
+}
+
+/* Red pulse overlay used for error feedback (similar to file-close pulse) */
+.red-pulse {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 0, 50, 0.12), rgba(255, 0, 50, 0.06) 20%, rgba(255,0,50,0.02) 40%, transparent 60%);
+  animation: redPulse 420ms ease-out 1;
+}
+
+@keyframes redPulse {
+  0% { opacity: 0.0; transform: scale(0.98); }
+  30% { opacity: 1.0; transform: scale(1.02); }
+  100% { opacity: 0.0; transform: scale(1.06); }
+}
+
+.markdown-container .prose h1,
+.markdown-container .prose h2,
+.markdown-container .prose h3,
+.markdown-container .prose h4 {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  margin: 0.6rem 0 0.35rem !important;
+}
+
+/* Scalable heading sizes tuned for single-pane preview */
+.markdown-container .prose h1 { font-size: 2.2rem !important; line-height: 1.15 !important; letter-spacing: -0.5px; }
+.markdown-container .prose h2 { font-size: 1.7rem !important; line-height: 1.2 !important; letter-spacing: -0.25px; }
+.markdown-container .prose h3 { font-size: 1.35rem !important; line-height: 1.3 !important; }
+.markdown-container .prose h4 { font-size: 1.12rem !important; line-height: 1.35 !important; }
+
+/* Reduce top margin if heading follows another heading */
+.markdown-container .prose h1 + h2,
+.markdown-container .prose h2 + h3,
+.markdown-container .prose h3 + h4 { margin-top: 0.2rem !important; }
+
+.markdown-container .prose strong,
+.markdown-container .prose b {
+  font-weight: 700 !important;
+  color: inherit !important;
+}
+
+.markdown-container .prose em,
+.markdown-container .prose i {
+  font-style: italic !important;
+  color: inherit !important;
+}
+
+.markdown-container .prose code {
+  background: rgba(255,255,255,0.03) !important;
+  padding: 0.12rem 0.28rem !important;
+  border-radius: 4px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  color: #e6e6ea !important;
+}
+
+/* Command bar: remove global focus outline, but preserve accessibility elsewhere */
+.command-bar :focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Suggestion selected indicator: subtle left border instead of full background */
+.command-bar .suggestion-selected { border-left: 3px solid #646cff !important; padding-left: 0.5rem !important; }
+
+/* Suggestion chips: remove background & container background */
+.command-bar button[class*="px-"][class*="py-"] { background: transparent !important; border: 1px solid rgba(255,255,255,0.1) !important; }
+.command-bar button[class*="px-"][class*="py-"]:hover { background: rgba(255,255,255,0.07) !important; }
+.command-bar .flex.flex-wrap { background: transparent !important; }
+
 
 /* Force code colors even in dark mode */
 @media (prefers-color-scheme: dark) {
@@ -362,13 +527,28 @@ pre code {
 
 /* Make the CodeMirror wrapper fill the container */
 .cm-editor {
-  height: 100%;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.cm-scroller {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+}
+
+.cm-content {
+  min-height: 100% !important;
+}
+
+/* Suppress CodeMirror ARIA announcements from showing up visually */
+.cm-announced {
+  display: none !important;
 }
 
 /* Make the editable content in CodeMirror non-editable in AI responses */
 .ai-code-block .cm-content[contenteditable="true"] {
   -webkit-user-modify: read-only !important;
-  user-modify: read-only !important;
   pointer-events: none !important;
 }
 
@@ -383,10 +563,31 @@ code, pre, .cm-content, .cm-line, .code-editor, pre code {
   font-family: 'JetBrains Mono', monospace !important;
 }
 
+/* Ensure nested flex children with scrolling content can actually shrink (common Svelte/Tailwind gotcha) */
+.flex-1, .grow {
+  min-height: 0; /* allow children with overflow auto to calculate height correctly */
+}
+
+/* Extra safety for our main layout containers */
+main > .flex, main > .flex > .flex, .markdown-container, .markdown-container > .flex {
+  min-height: 0;
+}
+
+/* Remove all input outlines and rings */
+input:focus, textarea:focus, button:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.command-bar-input:focus, .command-input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
 /* Make the editable content in CodeMirror non-editable in AI responses */
 .ai-code-block .cm-content[contenteditable="true"] {
   -webkit-user-modify: read-only !important;
-  user-modify: read-only !important;
   pointer-events: none !important;
   font-family: 'JetBrains Mono', monospace !important;
 }
@@ -417,3 +618,114 @@ code, pre, .cm-content, .cm-line, .code-editor, pre code {
   padding: 0.5rem 1rem 1rem 1rem;
   box-sizing: border-box;
 } 
+
+/* ==========================
+   Figma-aligned styles
+   Code section, AI response, chips, top bar
+   ========================== */
+
+/* Instrument Sans removed; use local Onest for non-code text */
+
+/* Draggable top status bar (Tauri window) */
+.top-status-bar {
+  height: 30px;
+  background: #222222;
+  color: #ffffff;
+  font-family: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial;
+  font-size: 12px;
+  opacity: 0.5;
+  -webkit-app-region: drag;
+}
+
+.top-status-bar .no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Command bar chips */
+.command-chips {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.command-chip {
+  background: #191919;
+  padding: 5px;
+  border-radius: 4px;
+  color: #ffffff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+}
+
+/* AI response layout: text + code sections */
+.ai-response {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  background: #191919;
+  color: #ffffff;
+  padding: 10px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+}
+
+@media (max-width: 900px) {
+  .ai-response {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ai-response .ai-text {
+  font-family: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.ai-response .ai-code {
+  font-family: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, 'Courier New', monospace;
+  font-size: 12px;
+}
+
+/* Code section container matching Figma colors */
+.code-section,
+.ai-response .ai-code pre,
+.ai-response .ai-code code {
+  background-color: #1e1e2e;
+  color: #e1e4e8;
+  border: 1px solid #292a3a;
+}
+
+.code-section {
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+/* Markdown single-pane container helpers (kept minimal) */
+.markdown-container textarea {
+  font-family: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial;
+}
+
+/* Markdown single-pane editing enhancements */
+.mdx-editor.mdx-hidden-text {
+  color: transparent !important; /* Hide raw markdown text */
+  caret-color: #6366f1 !important; /* Keep caret visible */
+  -webkit-text-fill-color: transparent !important; /* Safari */
+}
+
+/* Ensure selection still visible */
+.mdx-editor.mdx-hidden-text::selection {
+  background: rgba(255,255,255,0.12) !important;
+}
+
+/* Preview layer sits above the (now invisible) text */
+.mdx-preview-layer { 
+  z-index: 20; 
+}
+
+.mdx-preview.mdx-live {
+  opacity: 1 !important; /* Full opacity while editing */
+}
+
+/* Optional subtle fade when not editing (unused currently) */
+.mdx-preview:not(.mdx-live) {
+  opacity: 1; /* Keep same for now */
+}

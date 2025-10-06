@@ -4,6 +4,8 @@ import './global.css';
 
 // Simple function to ensure loading screen is removed
 function removeLoadingScreen() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  
   const loadingEl = document.querySelector('.loading-container');
   if (loadingEl) {
     (loadingEl as HTMLElement).style.display = 'none';
@@ -15,19 +17,23 @@ function removeLoadingScreen() {
 }
 
 // Remove loading screen after short delay
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(removeLoadingScreen, 1000);
-  });
-} else {
-  setTimeout(removeLoadingScreen, 500);
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(removeLoadingScreen, 1000);
+    });
+  } else {
+    setTimeout(removeLoadingScreen, 500);
+  }
 }
 
 // Global error handler
-window.addEventListener('error', (event) => {
-  console.error('Unhandled error:', event.error);
-  // In production, you would log this to a server or show a user-friendly message
-});
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    console.error('Unhandled error:', event.error);
+    // In production, you would log this to a server or show a user-friendly message
+  });
+}
 
 // Log successful initialization
 console.log('Vuno Editor initialized!'); 
