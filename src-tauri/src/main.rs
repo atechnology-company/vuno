@@ -17,11 +17,16 @@ mod commands;
 mod hotkeys;
 mod key_manager;
 mod command_processor;
+mod perplexity;
+mod git;
+mod lsp;
 
 use buffer::BufferManager;
 use api::ApiKeyStore;
 use config::FirstRunStore;
 use key_manager::KeyManager;
+use perplexity::PerplexityKeyStore;
+use lsp::LspManager;
 
 // Store CLI args for later use
 struct CliArgs {
@@ -87,6 +92,14 @@ fn main() {
             // Create API key store
             let api_key_store = ApiKeyStore::new(&app.handle());
             app.manage(api_key_store);
+            
+            // Create Perplexity key store
+            let perplexity_key_store = PerplexityKeyStore::new(&app.handle());
+            app.manage(perplexity_key_store);
+            
+            // Create LSP manager
+            let lsp_manager = LspManager::new();
+            app.manage(lsp_manager);
             
             // Create first run store
             let first_run_store = FirstRunStore::new(&app.handle());
@@ -167,6 +180,39 @@ fn main() {
             command_processor::execute_enhanced_command,
             command_processor::get_enhanced_command_suggestions,
             command_processor::validate_command,
+            
+            // Document-aware AI commands
+            command_processor::analyze_document,
+            command_processor::suggest_improvements,
+            command_processor::generate_tests,
+            command_processor::refactor_code,
+            command_processor::explain_selection,
+            
+            // Perplexity search
+            perplexity::get_perplexity_key,
+            perplexity::set_perplexity_key,
+            perplexity::search_web,
+            
+            // Git commands
+            git::git_status,
+            git::git_add,
+            git::git_commit,
+            git::git_push,
+            git::git_pull,
+            git::git_branch_list,
+            git::git_checkout,
+            git::git_diff,
+            git::git_log,
+            git::git_init,
+            git::git_clone,
+            
+            // LSP commands
+            lsp::start_lsp_server,
+            lsp::get_running_lsp_servers,
+            lsp::get_diagnostics,
+            lsp::get_completions,
+            lsp::format_document,
+            lsp::check_lsp_available,
             
             // Hotkey commands
             hotkeys::register_hotkey,
