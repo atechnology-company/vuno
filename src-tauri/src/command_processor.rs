@@ -447,6 +447,234 @@ pub async fn execute_enhanced_command(
     Ok(processor.execute(&command, working_dir.as_deref()))
 }
 
+// Document-aware AI commands
+#[tauri::command]
+pub async fn analyze_document(
+    content: String,
+    language: Option<String>,
+    api_key: String,
+) -> Result<CommandResult, String> {
+    if api_key.is_empty() {
+        return Ok(CommandResult {
+            success: false,
+            output: String::new(),
+            error: Some("No API key provided".to_string()),
+            command_type: "ai".to_string(),
+        });
+    }
+    
+    let lang_context = language.unwrap_or_else(|| "plain text".to_string());
+    let prompt = format!(
+        "Analyze this {} document and provide insights about its structure, purpose, and any potential improvements:\n\n{}",
+        lang_context, content
+    );
+    
+    let messages = vec![
+        serde_json::json!({
+            "role": "user",
+            "content": prompt
+        })
+    ];
+    
+    match send_chat_message(messages, api_key).await {
+        Ok(response) => Ok(CommandResult {
+            success: true,
+            output: response,
+            error: None,
+            command_type: "ai".to_string(),
+        }),
+        Err(e) => Ok(CommandResult {
+            success: false,
+            output: String::new(),
+            error: Some(format!("AI Error: {}", e)),
+            command_type: "ai".to_string(),
+        }),
+    }
+}
+
+#[tauri::command]
+pub async fn suggest_improvements(
+    content: String,
+    language: Option<String>,
+    api_key: String,
+) -> Result<CommandResult, String> {
+    if api_key.is_empty() {
+        return Ok(CommandResult {
+            success: false,
+            output: String::new(),
+            error: Some("No API key provided".to_string()),
+            command_type: "ai".to_string(),
+        });
+    }
+    
+    let lang_context = language.unwrap_or_else(|| "code".to_string());
+    let prompt = format!(
+        "Suggest specific improvements for this {} code. Focus on:\n\
+        1. Code quality and best practices\n\
+        2. Performance optimizations\n\
+        3. Security considerations\n\
+        4. Maintainability\n\n\
+        Code:\n{}",
+        lang_context, content
+    );
+    
+    let messages = vec![
+        serde_json::json!({
+            "role": "user",
+            "content": prompt
+        })
+    ];
+    
+    match send_chat_message(messages, api_key).await {
+        Ok(response) => Ok(CommandResult {
+            success: true,
+            output: response,
+            error: None,
+            command_type: "ai".to_string(),
+        }),
+        Err(e) => Ok(CommandResult {
+            success: false,
+            output: String::new(),
+            error: Some(format!("AI Error: {}", e)),
+            command_type: "ai".to_string(),
+        }),
+    }
+}
+
+#[tauri::command]
+pub async fn generate_tests(
+    content: String,
+    language: Option<String>,
+    api_key: String,
+) -> Result<CommandResult, String> {
+    if api_key.is_empty() {
+        return Ok(CommandResult {
+            success: false,
+            output: String::new(),
+            error: Some("No API key provided".to_string()),
+            command_type: "ai".to_string(),
+        });
+    }
+    
+    let lang_context = language.unwrap_or_else(|| "code".to_string());
+    let prompt = format!(
+        "Generate comprehensive unit tests for this {} code. Include edge cases and error handling:\n\n{}",
+        lang_context, content
+    );
+    
+    let messages = vec![
+        serde_json::json!({
+            "role": "user",
+            "content": prompt
+        })
+    ];
+    
+    match send_chat_message(messages, api_key).await {
+        Ok(response) => Ok(CommandResult {
+            success: true,
+            output: response,
+            error: None,
+            command_type: "ai".to_string(),
+        }),
+        Err(e) => Ok(CommandResult {
+            success: false,
+            output: String::new(),
+            error: Some(format!("AI Error: {}", e)),
+            command_type: "ai".to_string(),
+        }),
+    }
+}
+
+#[tauri::command]
+pub async fn refactor_code(
+    content: String,
+    language: Option<String>,
+    instruction: String,
+    api_key: String,
+) -> Result<CommandResult, String> {
+    if api_key.is_empty() {
+        return Ok(CommandResult {
+            success: false,
+            output: String::new(),
+            error: Some("No API key provided".to_string()),
+            command_type: "ai".to_string(),
+        });
+    }
+    
+    let lang_context = language.unwrap_or_else(|| "code".to_string());
+    let prompt = format!(
+        "Refactor this {} code according to the following instruction: {}\n\n\
+        Provide the refactored code with explanations:\n\n{}",
+        lang_context, instruction, content
+    );
+    
+    let messages = vec![
+        serde_json::json!({
+            "role": "user",
+            "content": prompt
+        })
+    ];
+    
+    match send_chat_message(messages, api_key).await {
+        Ok(response) => Ok(CommandResult {
+            success: true,
+            output: response,
+            error: None,
+            command_type: "ai".to_string(),
+        }),
+        Err(e) => Ok(CommandResult {
+            success: false,
+            output: String::new(),
+            error: Some(format!("AI Error: {}", e)),
+            command_type: "ai".to_string(),
+        }),
+    }
+}
+
+#[tauri::command]
+pub async fn explain_selection(
+    selection: String,
+    language: Option<String>,
+    api_key: String,
+) -> Result<CommandResult, String> {
+    if api_key.is_empty() {
+        return Ok(CommandResult {
+            success: false,
+            output: String::new(),
+            error: Some("No API key provided".to_string()),
+            command_type: "ai".to_string(),
+        });
+    }
+    
+    let lang_context = language.unwrap_or_else(|| "code".to_string());
+    let prompt = format!(
+        "Explain what this {} code does in detail:\n\n{}",
+        lang_context, selection
+    );
+    
+    let messages = vec![
+        serde_json::json!({
+            "role": "user",
+            "content": prompt
+        })
+    ];
+    
+    match send_chat_message(messages, api_key).await {
+        Ok(response) => Ok(CommandResult {
+            success: true,
+            output: response,
+            error: None,
+            command_type: "ai".to_string(),
+        }),
+        Err(e) => Ok(CommandResult {
+            success: false,
+            output: String::new(),
+            error: Some(format!("AI Error: {}", e)),
+            command_type: "ai".to_string(),
+        }),
+    }
+}
+
 #[tauri::command]
 pub fn get_enhanced_command_suggestions(input: String) -> Result<Vec<CommandSuggestion>, String> {
     let processor = CommandProcessor::new();

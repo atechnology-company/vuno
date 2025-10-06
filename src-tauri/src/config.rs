@@ -122,6 +122,25 @@ pub fn get_command_suggestions(mode: String, editor_language: String, _context: 
     suggestions.push("optimize this code".to_string());
     suggestions.push("generate documentation".to_string());
     suggestions.push("help me debug".to_string());
+    suggestions.push("analyze document".to_string());
+    suggestions.push("suggest improvements".to_string());
+    suggestions.push("generate tests".to_string());
+    suggestions.push("refactor code".to_string());
+    
+    // Add search commands
+    suggestions.push("search web for...".to_string());
+    
+    // Add LSP/IntelliSense commands
+    suggestions.push("start lsp server".to_string());
+    suggestions.push("format document".to_string());
+    suggestions.push("show diagnostics".to_string());
+    
+    // Add Git commands
+    suggestions.push("git status".to_string());
+    suggestions.push("git commit".to_string());
+    suggestions.push("git push".to_string());
+    suggestions.push("git pull".to_string());
+    suggestions.push("git log".to_string());
     
     // Add file-related commands if we have a current file
     if !current_file.is_empty() {
