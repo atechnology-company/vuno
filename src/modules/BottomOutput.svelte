@@ -33,26 +33,29 @@
 </script>
 
 {#if show}
-  <div class="w-full bottom-output z-40" in:fly={{ y: 8, duration: 220 }} out:fade={{ duration: 140 }}>
-    <div class="mx-8 rounded-t-2xl overflow-hidden bg-gradient-to-t from-black/95 via-black/85 to-transparent border border-white/6 backdrop-blur-sm shadow-xl">
-      <div class="flex items-center gap-3 px-4 py-2 border-b border-white/6">
-        <div class="flex-1 text-left text-sm text-white/90 font-medium">{latest[0].title || kindBadge(latest[0].kind)}</div>
+  <div class="w-full bottom-output z-40" in:fly={{ y: 20, duration: 300 }} out:fly={{ y: 10, duration: 200 }}>
+    <div class="mx-8 rounded-2xl overflow-hidden bg-black/95 backdrop-blur-2xl border border-white/10 shadow-2xl">
+      <div class="flex items-center gap-3 px-5 py-3 border-b border-white/10 bg-white/5">
+        <div class="flex-1 text-left text-sm text-white font-medium flex items-center gap-2">
+          <span class="text-lg">{kindBadge(latest[0].kind)}</span>
+          <span>{latest[0].title || 'Output'}</span>
+        </div>
         <div class="flex items-center gap-2">
-          <button class="text-xs text-white/50 hover:text-white px-2 py-1 rounded hover:bg-white/5" on:click={clear}>Clear</button>
-          <button class="text-xs text-white/50 hover:text-white px-2 py-1 rounded hover:bg-white/5" on:click={close}>Close</button>
+          <button class="text-sm text-white/60 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-all" on:click={clear}>Clear</button>
+          <button class="text-sm text-white/60 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-all" on:click={close}>Close</button>
         </div>
       </div>
 
-      <div class="px-4 py-3 max-h-[220px] overflow-auto text-sm text-white/90 leading-relaxed whitespace-pre-wrap font-sans">
+      <div class="px-5 py-4 max-h-[240px] overflow-auto text-sm text-white/90 leading-relaxed whitespace-pre-wrap font-sans">
         {#each latest as item (item.id)}
-          <div class="mb-3 last:mb-0">
+          <div class="mb-4 last:mb-0 p-3 rounded-lg bg-white/5 border border-white/10">
             {#if item.title}
-              <div class="text-xs text-white/40 mb-1 flex items-center justify-between">
+              <div class="text-xs text-white/50 mb-2 flex items-center justify-between font-mono">
                 <span>{item.title}</span>
                 <span>{new Date(item.timestamp).toLocaleTimeString()}</span>
               </div>
             {/if}
-            <div class="whitespace-pre-wrap">{item.content}</div>
+            <div class="whitespace-pre-wrap text-white/95">{item.content}</div>
           </div>
         {/each}
       </div>
@@ -65,7 +68,7 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 130px; /* Positioned directly above command bar with no gap */
+    bottom: 140px; /* Positioned above command bar with spacing */
     pointer-events: auto;
     display: flex;
     justify-content: center;
@@ -73,8 +76,9 @@
     z-index: 45;
   }
 
-  /* Small scrollbar tweaks */
-  .bottom-output ::-webkit-scrollbar { width: 8px; height: 8px; }
-  .bottom-output ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
-  .bottom-output ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+  /* Refined scrollbar */
+  .bottom-output ::-webkit-scrollbar { width: 10px; height: 10px; }
+  .bottom-output ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 5px; }
+  .bottom-output ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+  .bottom-output ::-webkit-scrollbar-track { background: transparent; }
 </style>

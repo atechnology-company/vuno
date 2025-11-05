@@ -47,22 +47,19 @@
   }
 </script>
 
-<div class="fixed bottom-20 right-5 z-[9999] flex flex-col gap-2 max-h-[70vh] overflow-y-auto pointer-events-none">
+<div class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-3 max-h-[70vh] overflow-y-auto pointer-events-none">
   {#each toastItems as toast (toast.id)}
+    {@const borderColor = toast.type === 'error' ? 'border-red-500/40' : toast.type === 'warning' ? 'border-yellow-500/40' : toast.type === 'success' ? 'border-green-500/40' : 'border-blue-500/40'}
     <div
       class={
-        "flex flex-col items-stretch px-4 py-3 rounded bg-black/90 text-white shadow-lg border border-gray-800 pointer-events-auto font-mono transition-all duration-200" +
-        (isCodeOutput(toast.message) ? ' w-auto max-w-[80vw]' : ' max-w-[350px]')
+        `flex flex-col items-stretch px-5 py-4 rounded-xl bg-black/95 text-white shadow-2xl border ${borderColor} backdrop-blur-xl pointer-events-auto font-sans transition-all duration-200 hover:scale-[1.02]` +
+        (isCodeOutput(toast.message) ? ' w-auto max-w-[80vw]' : ' max-w-[420px]')
       }
-      class:border-l-4={toast.type === 'info' || toast.type === 'success' || toast.type === 'warning' || toast.type === 'error'}
-      class:border-gray-600={toast.type === 'info'}
-      class:border-gray-400={toast.type === 'success' || toast.type === 'warning'}
-      class:border-white={toast.type === 'error'}
-      in:fly={{ y: 50, duration: 300 }}
-      out:fade={{ duration: 200 }}
+      in:fly={{ y: 50, duration: 320, opacity: 0 }}
+      out:fly={{ y: -20, duration: 220, opacity: 0 }}
     >
-      <div class="flex justify-between items-center mb-2">
-        <div class="mr-2 text-lg">
+      <div class="flex justify-between items-start gap-3 mb-2">
+        <div class="text-2xl">
           {#if toast.type === 'error'}
             ❌
           {:else if toast.type === 'warning'}
@@ -75,7 +72,7 @@
         </div>
         <button
           type="button"
-          class="text-gray-400 hover:text-white text-lg h-5 w-5 flex items-center justify-center rounded focus:outline-none cursor-pointer"
+          class="text-white/50 hover:text-white text-xl h-6 w-6 flex items-center justify-center rounded-lg hover:bg-white/10 focus:outline-none cursor-pointer transition-all"
           style="pointer-events: auto; z-index: 10000;"
           on:click|preventDefault|stopPropagation={(e) => {
             e.stopPropagation();
@@ -86,11 +83,11 @@
         >×</button>
       </div>
       {#if isCodeOutput(toast.message)}
-        <div class="bg-black/80 rounded p-2 max-h-[300px] overflow-y-auto border border-gray-800">
-          <pre class="m-0 whitespace-pre-wrap text-xs text-white font-mono">{toast.message}</pre>
+        <div class="bg-black/60 rounded-lg p-3 max-h-[300px] overflow-y-auto border border-white/10">
+          <pre class="m-0 whitespace-pre-wrap text-sm text-white/90 font-mono">{toast.message}</pre>
         </div>
       {:else}
-        <div class="text-sm break-words">{toast.message}</div>
+        <div class="text-sm break-words leading-relaxed text-white/90">{toast.message}</div>
       {/if}
     </div>
   {/each}

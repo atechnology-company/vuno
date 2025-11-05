@@ -66,9 +66,9 @@
 </script>
 
 {#if show}
-  <div bind:this={rootEl} class="fixed z-50 bg-gray-900 text-white p-2 rounded shadow-lg" style="left:{x}px;top:{y}px;transform:translate(-50%,-50%)">
+  <div bind:this={rootEl} class="fixed z-50 bg-black/95 backdrop-blur-xl text-white p-3 rounded-xl shadow-2xl border border-white/15" style="left:{x}px;top:{y}px;transform:translate(-50%,-50%)">
     {#each commands as c}
-      <button class="block w-full text-left p-1 hover:bg-gray-800 rounded" on:click={() => choose(c.cmd)}>{c.label}</button>
+      <button class="block w-full text-left px-3 py-2 hover:bg-white/10 rounded-lg transition-all duration-200 text-sm font-medium hover:scale-105 active:scale-95" on:click={() => choose(c.cmd)}>{c.label}</button>
     {/each}
   </div>
 {/if}

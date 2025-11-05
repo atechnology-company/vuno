@@ -6,6 +6,7 @@
   import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle } from '@codemirror/language';
   import { closeBrackets, autocompletion, closeBracketsKeymap } from '@codemirror/autocomplete';
   import { tags } from '@lezer/highlight';
+  import { autoCloseTags } from '@codemirror/lang-html';
 
   // Create a terminal-inspired theme (will be overridden by oneDark if present)
   const terminalTheme = EditorView.theme({
@@ -230,7 +231,7 @@
         return rust();
       case 'html':
       case 'htm':
-        return html();
+        return html({ autoCloseTags: true });
       case 'css':
         return css();
       case 'json':
@@ -284,6 +285,7 @@
             themeCompartment.of(themeExtension),
             highlightActiveLine(),
             closeBrackets(),
+            autoCloseTags,
             autocompletion(),
             history(),
             editorReadOnly.of(EditorView.editable.of(!readOnly)),

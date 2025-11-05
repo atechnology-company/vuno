@@ -7,7 +7,7 @@ use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager};
 use global_hotkey::hotkey::HotKey;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::key_manager::KeyManager;
+
 
 /// Store for managing global hotkeys
 #[derive(Clone)]

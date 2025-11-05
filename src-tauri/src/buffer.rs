@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use tauri;
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
-use ropey::Rope;
+
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Buffer {

@@ -117,6 +117,13 @@ pub fn get_command_suggestions(mode: String, editor_language: String, _context: 
         suggestions.push("check spelling".to_string());
     }
     
+    // Add GitHub Copilot commands (high priority)
+    suggestions.push("copilot start".to_string());
+    suggestions.push("copilot sign in".to_string());
+    suggestions.push("copilot sign out".to_string());
+    suggestions.push("copilot status".to_string());
+    suggestions.push("copilot stop".to_string());
+    
     // Add AI commands
     suggestions.push("explain this code".to_string());
     suggestions.push("optimize this code".to_string());

@@ -533,6 +533,97 @@
       }
     }
     
+    // Handle GitHub Copilot commands
+    if (cmd === 'copilot' && isTauri) {
+      const subcommand = args[0];
+      try {
+        if (subcommand === 'start') {
+          await invoke('copilot_start_server', { workspacePath: workingDir });
+          appState.update(s => ({ 
+            ...s, 
+            statusMessage: 'Copilot server started',
+            commandBarTitle: 'Run another Copilot command',
+            commandBarPlaceholder: 'Type a Copilot command (ESC for general commands)',
+            commandMode: true,
+            commandText: '',
+            suggestions: []
+          }));
+          addToast('Copilot server started successfully', 'success');
+          return;
+        } else if (subcommand === 'stop') {
+          await invoke('copilot_stop_server');
+          appState.update(s => ({ 
+            ...s, 
+            statusMessage: 'Copilot server stopped',
+            commandBarTitle: 'Run another Copilot command',
+            commandBarPlaceholder: 'Type a Copilot command (ESC for general commands)',
+            commandMode: true,
+            commandText: '',
+            suggestions: []
+          }));
+          addToast('Copilot server stopped', 'info');
+          return;
+        } else if (subcommand === 'status') {
+          const status = await invoke('copilot_get_status') as any;
+          const statusMsg = `Status: ${status.status}\nMessage: ${status.message}\nSigned In: ${status.signedIn ? 'Yes' : 'No'}`;
+          appState.update(s => ({ 
+            ...s, 
+            statusMessage: `Copilot: ${status.status}`,
+            commandBarTitle: 'Run another Copilot command',
+            commandBarPlaceholder: 'Type a Copilot command (ESC for general commands)',
+            commandMode: true,
+            commandText: '',
+            suggestions: []
+          }));
+          showOutput(statusMsg, 'info', 'Copilot Status');
+          addToast(`Copilot status: ${status.status}`, 'info');
+          return;
+        } else if (subcommand === 'sign' && args[1] === 'in') {
+          const response = await invoke('copilot_sign_in') as any;
+          const signInMsg = `Please visit: ${response.verificationUri}\n\nAnd enter code: ${response.userCode}`;
+          appState.update(s => ({ 
+            ...s, 
+            statusMessage: 'Opening browser for Copilot sign-in...',
+            commandBarTitle: 'Run another Copilot command',
+            commandBarPlaceholder: 'Type a Copilot command (ESC for general commands)',
+            commandMode: true,
+            commandText: '',
+            suggestions: []
+          }));
+          showOutput(signInMsg, 'info', 'Copilot Sign In');
+          // Open browser
+          const { open } = await import('@tauri-apps/api/shell');
+          await open(response.verificationUri);
+          addToast(`Code: ${response.userCode} - Browser opened`, 'success');
+          return;
+        } else if (subcommand === 'sign' && args[1] === 'out') {
+          await invoke('copilot_sign_out');
+          appState.update(s => ({ 
+            ...s, 
+            statusMessage: 'Signed out of Copilot',
+            commandBarTitle: 'Run another Copilot command',
+            commandBarPlaceholder: 'Type a Copilot command (ESC for general commands)',
+            commandMode: true,
+            commandText: '',
+            suggestions: []
+          }));
+          addToast('Signed out of Copilot', 'info');
+          return;
+        } else {
+          addToast('Usage: copilot [start|stop|status|sign in|sign out]', 'warning');
+          return;
+        }
+      } catch (e) {
+        appState.update(s => ({ 
+          ...s, 
+          statusMessage: `Copilot error: ${e}`,
+          commandMode: false
+        }));
+        addToast(`Copilot error: ${e}`, 'error');
+        return;
+      }
+    }
+    
     // 1. Check if it's an editor command
     const editorCommands: Record<string, () => Promise<void>> = {
       'new': async () => {
@@ -880,7 +971,7 @@
       const aiResult = await invoke('execute_enhanced_command', { 
         command: `ai ${command}`,
         apiKey: $appState.apiKey,
-        workingDir: null
+        workingDir: workingDir
       }) as any;
       
       if (aiResult.success) {
@@ -1251,12 +1342,12 @@
   aria-label="Vuno Editor Application"
   tabindex="-1"
 >
-  <div class="flex justify-between items-center px-2 py-1 bg-[#191919] text-gray-400 text-xs border-b border-gray-800 font-sans select-none relative z-10 h-7 min-h-7" role="banner" aria-label="Title bar">
-    <div class="flex items-center gap-2" data-tauri-drag-region>
+  <div class="flex justify-between items-center px-3 py-2 bg-[#0a0a0a] text-gray-300 text-xs border-b border-gray-900 font-sans select-none relative z-10 h-8 min-h-8 backdrop-blur-xl" role="banner" aria-label="Title bar">
+    <div class="flex items-center gap-3" data-tauri-drag-region>
       {#if currentFile}
         {#if renaming}
           <input
-            class="bg-transparent border border-gray-700 text-gray-100 rounded px-1 focus:outline-none focus:ring-1 focus:ring-gray-500 w-64 text-xs"
+            class="bg-black/30 border border-gray-700 text-gray-100 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white/20 w-64 text-xs transition-all"
             bind:value={renameValue}
             on:keydown={(e) => {
               if (e.key === 'Enter') commitRename();
@@ -1266,12 +1357,12 @@
             bind:this={renameInput}
           />
         {:else}
-          <button class="text-gray-100 hover:text-white hover:opacity-80 cursor-pointer transition-opacity relative z-20" style="-webkit-app-region: no-drag;" on:click={(e) => { e.stopPropagation(); startRename(); }}>{currentFile}</button>
+          <button class="text-white hover:text-white/80 cursor-pointer transition-all hover:scale-105 relative z-20 font-medium" style="-webkit-app-region: no-drag;" on:click={(e) => { e.stopPropagation(); startRename(); }}>{currentFile}</button>
         {/if}
       {:else}
         {#if renaming}
           <input
-            class="bg-transparent border border-gray-700 text-gray-100 rounded px-1 focus:outline-none focus:ring-1 focus:ring-gray-500 w-64 text-xs"
+            class="bg-black/30 border border-gray-700 text-gray-100 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white/20 w-64 text-xs transition-all"
             bind:value={renameValue}
             on:keydown={(e) => {
               if (e.key === 'Enter') commitRename();
@@ -1281,12 +1372,24 @@
             bind:this={renameInput}
           />
         {:else}
-          <button class="text-gray-500 hover:text-gray-300 hover:opacity-80 cursor-pointer transition-opacity relative z-20" style="-webkit-app-region: no-drag;" on:click={(e) => { e.stopPropagation(); startRename(); }}>untitled</button>
+          <button class="text-white/40 hover:text-white/60 cursor-pointer transition-all hover:scale-105 relative z-20" style="-webkit-app-region: no-drag;" on:click={(e) => { e.stopPropagation(); startRename(); }}>untitled</button>
         {/if}
       {/if}
     </div>
-    <div class="flex items-center gap-2" data-tauri-drag-region>
-      <span class="text-gray-400">{statusMessage}</span>
+    <div class="flex items-center gap-3" data-tauri-drag-region>
+      {#if isAiLoading || commandExecutionInProgress}
+        <div class="flex items-center gap-2">
+          <div class="spinner-small"></div>
+          <span class="text-white/60 text-xs">{isAiLoading ? 'AI thinking...' : 'Running...'}</span>
+        </div>
+      {:else if hasUnsavedChanges}
+        <span class="text-yellow-400/80 text-xs flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+          Unsaved changes
+        </span>
+      {:else}
+        <span class="text-white/50 text-xs">{statusMessage}</span>
+      {/if}
     </div>
     <div class="flex items-center gap-2" data-tauri-drag-region>
       <span class="text-gray-500 font-mono">
@@ -1297,9 +1400,9 @@
     </div>
   </div>
   
-  <div class="flex-1 flex flex-col min-h-0 h-full relative overflow-hidden" on:dblclick={(e) => { e.stopPropagation(); openGlobalCommandBar(); }} role="button" aria-label="Double-click to open command menu" tabindex="0">
+  <div class="flex-1 flex flex-col min-h-0 h-full relative overflow-hidden" on:dblclick={(e) => { e.stopPropagation(); openGlobalCommandBar(); }} role="button" aria-label="Double-click to open command menu" tabindex="0" in:fade={{ duration: 200, delay: 100 }}>
   {#if mode === 'code'}
-    <div class="flex-1 flex w-full h-full min-h-0">
+    <div class="flex-1 flex w-full h-full min-h-0" in:fade={{ duration: 150 }}>
       <Editor 
         bind:this={editorComponent}
         content={content}
@@ -1329,7 +1432,7 @@
   {/if}
     
   {#if mode === 'markdown'}
-    <div class="flex-1 flex w-full h-full min-h-0 overflow-hidden">
+    <div class="flex-1 flex w-full h-full min-h-0 overflow-hidden" in:fade={{ duration: 150 }}>
       <MarkdownRenderer 
         bind:this={editorComponent}
         content={content}

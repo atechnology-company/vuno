@@ -55,6 +55,7 @@ html, body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* App container */
@@ -146,34 +147,36 @@ textarea[class*="mdx-"] {
   min-height: 0 !important;
 }
 
-/* Scrollbar styling - Minimal OLED theme */
+/* Scrollbar styling - Minimal OLED theme with smooth transitions */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   background: transparent;
 }
 
 ::-webkit-scrollbar-track {
   background: transparent;
+  border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  border: 2px solid transparent;
   background-clip: padding-box;
+  transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.25);
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 /* For Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.5) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
 }
 
 /* Code blocks */
@@ -291,8 +294,23 @@ button, input, select, textarea {
   display: inline-block;
 }
 
+.spinner-small {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Radial gradient utility for vignette effects */
+.bg-gradient-radial {
+  background: radial-gradient(circle at center, var(--tw-gradient-stops));
 }
 
 /* Responsive media queries */

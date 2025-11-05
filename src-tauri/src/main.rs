@@ -1,5 +1,3 @@
-// بسم الله الرحمن الرحيم
-
 #![cfg_attr(
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
@@ -17,6 +15,13 @@ mod commands;
 mod hotkeys;
 mod key_manager;
 mod command_processor;
+<<<<<<< Updated upstream
+=======
+mod perplexity;
+mod git;
+mod lsp;
+mod copilot;
+>>>>>>> Stashed changes
 
 use buffer::BufferManager;
 use api::ApiKeyStore;
@@ -168,6 +173,45 @@ fn main() {
             command_processor::get_enhanced_command_suggestions,
             command_processor::validate_command,
             
+<<<<<<< Updated upstream
+=======
+            // Perplexity search
+            perplexity::get_perplexity_key,
+            perplexity::set_perplexity_key,
+            perplexity::search_web,
+            
+            // Git commands
+            git::git_status,
+            git::git_add,
+            git::git_commit,
+            git::git_push,
+            git::git_pull,
+            git::git_branch_list,
+            git::git_checkout,
+            git::git_diff,
+            git::git_log,
+            git::git_init,
+            git::git_clone,
+            
+            // LSP commands
+            lsp::start_lsp_server,
+            lsp::get_running_lsp_servers,
+            lsp::get_diagnostics,
+            lsp::get_completions,
+            lsp::format_document,
+            lsp::check_lsp_available,
+            
+            // GitHub Copilot commands
+            copilot::copilot_start_server,
+            copilot::copilot_stop_server,
+            copilot::copilot_get_status,
+            copilot::copilot_sign_in,
+            copilot::copilot_sign_out,
+            copilot::copilot_get_completions,
+            copilot::copilot_accept_completion,
+            copilot::copilot_reject_completion,
+            
+>>>>>>> Stashed changes
             // Hotkey commands
             hotkeys::register_hotkey,
             hotkeys::unregister_hotkey,
